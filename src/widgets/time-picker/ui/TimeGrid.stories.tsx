@@ -60,9 +60,6 @@ export const FullWeek: StoryObj = {
 };
 
 export const Mobile: StoryObj = {
-  parameters: {
-    viewport: { defaultViewport: "mobile" },
-  },
   render: () => (
     <TimeGridWithState
       dates={[
@@ -72,4 +69,10 @@ export const Mobile: StoryObj = {
       timeSlots={generateTimeSlots(9, 18)}
     />
   ),
+  globals: {
+    viewport: {
+      value: "mobile",
+      isRotated: false
+    }
+  },
 };
