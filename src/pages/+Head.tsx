@@ -1,6 +1,4 @@
-// https://vike.dev/Head
-
-import logoUrl from "../assets/logo.svg";
+import logoUrl from "@/src/shared/assets/logo.svg";
 
 export function Head() {
   return <link rel="icon" href={logoUrl} />;

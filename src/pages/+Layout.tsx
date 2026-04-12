@@ -1,7 +1,7 @@
-import "./Layout.css";
+import "@/src/app/styles/global.css";
 
-import logoUrl from "../assets/logo.svg";
-import { Link } from "../components/Link";
+import logoUrl from "@/src/shared/assets/logo.svg";
+import { Link } from "@/src/shared/ui/Link";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { generateTimeSlots } from "@/src/entities/meeting";
+import type { SlotKey } from "@/src/entities/meeting";
 import { TimeGrid } from "./TimeGrid";
-import { generateTimeSlots } from "./types";
-import type { SlotKey } from "./types";
 
 const meta: Meta<typeof TimeGrid> = {
-  title: "Components/TimeGrid",
+  title: "Widgets/TimeGrid",
   component: TimeGrid,
   parameters: {
     layout: "centered",
@@ -14,7 +14,6 @@ const meta: Meta<typeof TimeGrid> = {
 
 export default meta;
 
-/** 상태를 관리하는 래퍼 (Storybook에서 인터랙션 테스트용) */
 function TimeGridWithState({
   dates,
   timeSlots,
@@ -39,7 +38,6 @@ function TimeGridWithState({
   );
 }
 
-/** 기본 — 빈 그리드 (3일 × 09:00~12:00) */
 export const Default: StoryObj = {
   render: () => (
     <TimeGridWithState
@@ -49,7 +47,6 @@ export const Default: StoryObj = {
   ),
 };
 
-/** 풀사이즈 — 7일 × 09:00~21:00 (336셀) */
 export const FullWeek: StoryObj = {
   render: () => (
     <TimeGridWithState
@@ -62,7 +59,6 @@ export const FullWeek: StoryObj = {
   ),
 };
 
-/** 모바일 뷰포트 — 좁은 화면에서 가로 스크롤 확인 */
 export const Mobile: StoryObj = {
   parameters: {
     viewport: { defaultViewport: "mobile" },

@@ -1,12 +1,11 @@
 import { useCallback, useRef } from "react";
-import { TimeCell } from "./TimeCell";
-import type { TimeGridProps } from "./types";
-import { makeSlotKey } from "./types";
-import { useDragSelect } from "./useDragSelect";
+import { makeSlotKey } from "@/src/entities/meeting";
+import { TimeCell, useDragSelect } from "@/src/features/drag-select";
+import type { TimeGridProps } from "../model/types";
 
 export function TimeGrid({ dates, timeSlots, selected, onSelectionChange }: TimeGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
-  const { startDrag, moveDrag, endDrag, getDragPreview, isDragging } = useDragSelect({
+  const { startDrag, moveDrag, endDrag, getDragPreview } = useDragSelect({
     selected,
     onSelectionChange,
   });
@@ -42,7 +41,7 @@ export function TimeGrid({ dates, timeSlots, selected, onSelectionChange }: Time
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      e.preventDefault(); // 스크롤 방지
+      e.preventDefault();
       const touch = e.touches[0];
       moveDrag(touch.clientX, touch.clientY);
     },
@@ -66,14 +65,13 @@ export function TimeGrid({ dates, timeSlots, selected, onSelectionChange }: Time
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* CSS Grid: 1열(시간 레이블) + N열(날짜) */}
       <div
         className="grid gap-0"
         style={{
           gridTemplateColumns: `4rem repeat(${dates.length}, 1fr)`,
         }}
       >
-        {/* 헤더 행: 좌상단 빈 셀 + 날짜 헤더 */}
+        {/* 헤더 행 */}
         <div className="h-10" />
         {dates.map((date) => (
           <div
@@ -84,18 +82,15 @@ export function TimeGrid({ dates, timeSlots, selected, onSelectionChange }: Time
           </div>
         ))}
 
-        {/* 본문 행: 시간 레이블 + 셀 */}
+        {/* 본문 행 */}
         {timeSlots.map((time) => (
           <>
-            {/* 시간 레이블 */}
             <div
               key={`label-${time}`}
               className="flex h-8 items-center justify-end pr-2 text-xs text-muted-foreground"
             >
               {time}
             </div>
-
-            {/* 각 날짜별 셀 */}
             {dates.map((date) => {
               const slotKey = makeSlotKey(date, time);
               return (

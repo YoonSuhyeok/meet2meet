@@ -1,4 +1,4 @@
-import "../pages/Layout.css";
+import "../src/app/styles/global.css";
 
 import type { Preview } from "storybook";
 
