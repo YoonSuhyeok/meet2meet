@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
+import { logger } from 'hono/logger'
 
 type Bindings = {
     JWT_SECRET: string;
@@ -37,6 +38,7 @@ const PROVIDERS = {
 type Provider = keyof typeof PROVIDERS;
 
 const authRoutes = new Hono<{ Bindings: Bindings }>();
+authRoutes.use(logger());
 
 // GET /api/auth/:provider — 소셜 로그인 시작
 authRoutes.get("/:provider", async ({ req, env, redirect }) => {
@@ -55,6 +57,7 @@ authRoutes.get("/:provider", async ({ req, env, redirect }) => {
         ...(config.scope ? { scope: config.scope } : {}),
     });
 
+    console.log(`[auth] ${provider} 로그인 시작 → ${config.authUrl}`);
     return redirect(`${config.authUrl}?${params.toString()}`);
 });
 
@@ -65,6 +68,7 @@ authRoutes.get("/:provider/callback", async (c) => {
     if (!config) return c.redirect("/login?error=auth_failed");
 
     const code = c.req.query("code");
+    console.log(`[auth] ${provider} 콜백 수신, code=${code ? "있음" : "없음"}`);
     if (!code) return c.redirect("/login?error=auth_failed");
 
     const env = c.env;
@@ -90,8 +94,10 @@ authRoutes.get("/:provider/callback", async (c) => {
         });
         const tokenData = (await tokenRes.json()) as { access_token: string };
         accessToken = tokenData.access_token;
+        console.log(`[auth] ${provider} 토큰 교환`, accessToken ? "성공" : "실패", tokenData);
         if (!accessToken) return c.redirect("/login?error=token_exchange");
-    } catch {
+    } catch (e) {
+        console.error(`[auth] ${provider} 토큰 교환 실패:`, e);
         return c.redirect("/login?error=token_exchange");
     }
 
@@ -102,8 +108,11 @@ authRoutes.get("/:provider/callback", async (c) => {
             headers: { Authorization: `Bearer ${accessToken}` },
         });
         const raw = await userRes.json();
+        console.log(`[auth] ${provider} 사용자 정보 원본:`, JSON.stringify(raw));
         user = normalizeUser(provider, raw);
-    } catch {
+        console.log(`[auth] ${provider} 정규화된 사용자:`, user);
+    } catch (e) {
+        console.error(`[auth] ${provider} 사용자 정보 조회 실패:`, e);
         return c.redirect("/login?error=user_info");
     }
 
