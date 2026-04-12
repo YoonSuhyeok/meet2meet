@@ -58,12 +58,7 @@ const PROVIDERS = [
   },
 ] as const;
 
-export default function Page() {
-  const params = new URLSearchParams(
-    typeof window !== "undefined" ? window.location.search : "",
-  );
-  const error = params.get("error");
-
+export function LoginPage({ error }: { error?: string | null }) {
   return (
     <div className="flex min-h-[80vh] items-center justify-center">
       <div className="w-full max-w-sm space-y-8 px-4">
@@ -114,4 +109,11 @@ export default function Page() {
       </div>
     </div>
   );
+}
+
+export default function Page() {
+  const params = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : "",
+  );
+  return <LoginPage error={params.get("error")} />;
 }
