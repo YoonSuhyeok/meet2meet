@@ -5,5 +5,4 @@ export default {
     title: "Meet2Meet",
     description: "Meet2Meet — 드래그 기반 시간 선택",
     extends: [vikeReact],
-    server: "+server.ts",
 } satisfies Config;
