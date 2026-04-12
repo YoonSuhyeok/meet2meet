@@ -1,11 +1,11 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "type": "command",
-        "command": "bash .github/hooks/biome-post-edit.sh",
-        "timeout": 15
-      }
-    ]
-  }
+    "hooks": {
+        "PostToolUse": [
+            {
+                "type": "command",
+                "command": "bash .github/hooks/biome-post-edit.sh",
+                "timeout": 15
+            }
+        ]
+    }
 }

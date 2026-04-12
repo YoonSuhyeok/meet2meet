@@ -157,6 +157,7 @@ authRoutes.get("/me", async (c) => {
 });
 
 // 제공자별 사용자 정보 정규화
+// biome-ignore lint/suspicious/noExplicitAny: OAuth 제공자별 응답 구조가 다름
 function normalizeUser(provider: Provider, raw: any) {
     switch (provider) {
         case "naver": {
