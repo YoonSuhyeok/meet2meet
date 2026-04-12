@@ -1,3 +1,6 @@
+# Secrets
+.dev.vars
+
 # MacOS
 .DS_Store
 

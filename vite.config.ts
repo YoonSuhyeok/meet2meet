@@ -17,4 +17,12 @@ export default defineConfig({
             "@": path.resolve(__dirname, "."),
         },
     },
+    ssr: {
+        optimizeDeps: {
+            include: ["react", "react-dom/server.edge", "react-dom/client"],
+        },
+        resolve: {
+            conditions: ["module", "import", "browser"],
+        },
+    },
 });

@@ -24,7 +24,7 @@ const PROVIDERS = {
         authUrl: "https://kauth.kakao.com/oauth/authorize",
         tokenUrl: "https://kauth.kakao.com/oauth/token",
         userInfoUrl: "https://kapi.kakao.com/v2/user/me",
-        scope: "profile_nickname,account_email", // 필요한 항목 명시
+        scope: "profile_nickname", // 필요한 항목 명시
     },
     google: {
         authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
