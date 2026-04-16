@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
-import { logger } from 'hono/logger'
+import { logger } from "hono/logger";
 
 type Bindings = {
     JWT_SECRET: string;
@@ -94,7 +94,11 @@ authRoutes.get("/:provider/callback", async (c) => {
         });
         const tokenData = (await tokenRes.json()) as { access_token: string };
         accessToken = tokenData.access_token;
-        console.log(`[auth] ${provider} 토큰 교환`, accessToken ? "성공" : "실패", tokenData);
+        console.log(
+            `[auth] ${provider} 토큰 교환`,
+            accessToken ? "성공" : "실패",
+            tokenData,
+        );
         if (!accessToken) return c.redirect("/login?error=token_exchange");
     } catch (e) {
         console.error(`[auth] ${provider} 토큰 교환 실패:`, e);
@@ -108,7 +112,10 @@ authRoutes.get("/:provider/callback", async (c) => {
             headers: { Authorization: `Bearer ${accessToken}` },
         });
         const raw = await userRes.json();
-        console.log(`[auth] ${provider} 사용자 정보 원본:`, JSON.stringify(raw));
+        console.log(
+            `[auth] ${provider} 사용자 정보 원본:`,
+            JSON.stringify(raw),
+        );
         user = normalizeUser(provider, raw);
         console.log(`[auth] ${provider} 정규화된 사용자:`, user);
     } catch (e) {
