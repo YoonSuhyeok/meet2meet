@@ -40,6 +40,32 @@ type Provider = keyof typeof PROVIDERS;
 const authRoutes = new Hono<{ Bindings: Bindings }>();
 authRoutes.use(logger());
 
+// POST /api/auth/logout — 로그아웃 (/:provider 보다 먼저 등록)
+authRoutes.post("/logout", async (c) => {
+    deleteCookie(c, "session", { path: "/" });
+    return c.json({ ok: true });
+});
+
+// GET /api/auth/me — 현재 사용자 조회 (/:provider 보다 먼저 등록)
+authRoutes.get("/me", async (c) => {
+    const token = getCookie(c, "session");
+    if (!token) return c.json({ error: "unauthorized" }, 401);
+
+    try {
+        const payload = await verify(token, c.env.JWT_SECRET, "HS256");
+        return c.json({
+            id: payload.sub,
+            name: payload.name,
+            email: payload.email,
+            profileImage: payload.profileImage,
+            provider: payload.provider,
+        });
+    } catch {
+        deleteCookie(c, "session", { path: "/" });
+        return c.json({ error: "unauthorized" }, 401);
+    }
+});
+
 // GET /api/auth/:provider — 소셜 로그인 시작
 authRoutes.get("/:provider", async ({ req, env, redirect }) => {
     const provider = req.param("provider") as Provider;
@@ -144,32 +170,6 @@ authRoutes.get("/:provider/callback", async (c) => {
     });
 
     return c.redirect("/");
-});
-
-// POST /api/auth/logout — 로그아웃
-authRoutes.post("/logout", async (c) => {
-    deleteCookie(c, "session", { path: "/" });
-    return c.json({ ok: true });
-});
-
-// GET /api/auth/me — 현재 사용자 조회
-authRoutes.get("/me", async (c) => {
-    const token = getCookie(c, "session");
-    if (!token) return c.json({ error: "unauthorized" }, 401);
-
-    try {
-        const payload = await verify(token, c.env.JWT_SECRET, "HS256");
-        return c.json({
-            id: payload.sub,
-            name: payload.name,
-            email: payload.email,
-            profileImage: payload.profileImage,
-            provider: payload.provider,
-        });
-    } catch {
-        deleteCookie(c, "session", { path: "/" });
-        return c.json({ error: "unauthorized" }, 401);
-    }
 });
 
 // 제공자별 사용자 정보 정규화

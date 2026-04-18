@@ -16,13 +16,16 @@ export default defineConfig({
         alias: {
             "@": path.resolve(__dirname, "."),
         },
+        dedupe: ["react", "react-dom"],
     },
     ssr: {
         optimizeDeps: {
-            include: ["react", "react-dom/server.edge", "react-dom/client"],
-        },
-        resolve: {
-            conditions: ["module", "import", "browser"],
+            include: [
+                "react",
+                "react-dom/server.edge",
+                "clsx",
+                "tailwind-merge",
+            ],
         },
     },
 });
