@@ -2,9 +2,10 @@ import { cn } from "@/src/shared";
 
 const ERROR_MESSAGES: Record<string, string> = {
     auth_failed: "소셜 인증에 실패했습니다. 다시 시도해주세요.",
-    token_exchange: "인증 처리 중 오류가 발생했습니다.",
-    user_info: "사용자 정보를 가져올 수 없습니다.",
-    server_error: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+	token_exchange: "인증 처리 중 오류가 발생했습니다.",
+	user_info: "사용자 정보를 가져올 수 없습니다.",
+	server_error: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+	session_expired: "로그인이 만료되었습니다. 다시 로그인해주세요.",
 };
 
 function NaverIcon({ className }: { className?: string }) {

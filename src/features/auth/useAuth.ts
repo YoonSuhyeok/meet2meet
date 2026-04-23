@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+    clearStoredAuthToken,
+    createAuthHeaders,
+    getStoredAuthToken,
+} from "./token";
 
 export type User = {
     id: string;
@@ -13,15 +18,35 @@ export function useAuth() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/auth/me")
-            .then((res) => (res.ok ? res.json() : null))
+        const token = getStoredAuthToken();
+        if (!token) {
+            setUser(null);
+            setLoading(false);
+            return;
+        }
+
+        fetch("/api/auth/me", {
+            headers: createAuthHeaders(),
+        })
+            .then((res) => {
+                if (res.ok) {
+                    return res.json();
+                }
+
+                if (res.status === 401) {
+                    clearStoredAuthToken();
+                }
+
+                return null;
+            })
             .then((data) => setUser(data as User | null))
             .catch(() => setUser(null))
             .finally(() => setLoading(false));
     }, []);
 
     const logout = useCallback(async () => {
-        await fetch("/api/auth/logout", { method: "POST" });
+        clearStoredAuthToken();
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
         window.location.href = "/login";
     }, []);
 
