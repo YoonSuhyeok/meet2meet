@@ -1,22 +1,187 @@
 ---
 title: 와이어프레임
-description: 로그인/미팅 생성 와이어프레임 HTML 원본
+description: 로그인/미팅 생성 화면 설계, 플로우, 어노테이션 통합 정리
 ---
 
-import WireframeFull from "../../../components/WireframeFull.astro";
+import { Aside, Card, CardGrid } from "@astrojs/starlight/components";
 
-로그인/미팅 생성 와이어프레임을 문서 본문에서 바로 확인할 수 있습니다.
+로그인과 미팅 생성 화면의 와이어프레임 의도를 본문에서 바로 읽을 수 있도록 정리한 문서입니다. 시각 자료는 보조로만 두고, 화면 구성·동작·정책을 글 중심으로 통합했습니다.
 
-## 로그인 와이어프레임
+<Aside type="note" title="현재 버전과 연결">
+  - 인증 API 상세는 [인증 플로우](/planning/auth/)에서 이어집니다.
+  - 시간 선택 동작은 [시간 선택 테이블](/planning/time-select/)에서 이어집니다.
+  - 응답 스키마는 [Meeting API (Swagger)](/api/meeting/)에서 검증합니다.
+</Aside>
 
-<WireframeFull
-  src="/wireframes/01.auth-wireframe-login.html"
-  title="Login Wireframe"
-/>
+---
 
-## 미팅 생성 와이어프레임
+## 1. 로그인 (`/login`)
 
-<WireframeFull
-  src="/wireframes/02.meeting-new-wireframe.html"
-  title="Meeting New Wireframe"
-/>
+### 1.1 사용자 플로우
+
+1. `/login` 진입
+2. 소셜 로그인 버튼 클릭 → `GET /api/auth/{provider}` (302 → OAuth)
+3. 사용자 인증 완료 → `GET /api/auth/{provider}/callback`
+4. 성공: `Set-Cookie: session` + `/`로 이동
+5. 실패: `/login?error={code}`로 복귀
+
+### 1.2 화면 구성
+
+<CardGrid>
+  <Card title="Screen 01 — Login Default" icon="rocket">
+    제목, 부제, 소셜 버튼 3종(네이버/카카오/구글), 약관 안내. 비로그인 상태에서 진입한 기본 화면.
+  </Card>
+  <Card title="Screen 02 — Login Error" icon="warning">
+    `?error=` 쿼리 파라미터를 읽어 상단 에러 배너를 노출. 버튼 영역은 동일하게 유지.
+  </Card>
+  <Card title="Screen 03 — Home (Authenticated)" icon="approve-check">
+    상단 NavBar(로고/아바타/로그아웃), 중앙 CTA "새 미팅 만들기". 로그인 직후 진입 지점.
+  </Card>
+  <Card title="Screen 04 — Mobile (375px)" icon="laptop">
+    동일한 단일 컬럼 구조. 버튼 패딩을 키워 44px+ 터치 타겟 확보.
+  </Card>
+</CardGrid>
+
+### 1.3 어노테이션
+
+| # | 위치 | 동작 | 비고 |
+|---|------|------|------|
+| 1 | 진입 시 | `GET /api/auth/me` 200이면 `/`로 리다이렉트 | Edge E1 |
+| 2 | Guard | 비로그인 사용자가 보호 페이지 접근 시 `/login`으로 이동 | 미들웨어 처리 |
+| 3 | 소셜 버튼 | `GET /api/auth/{provider}` 호출 → 302 → OAuth | API Spec |
+| 4 | 에러 배너 | `?error=` 파라미터 → 상단 메시지 표시 | 코드별 매핑 |
+| 5 | 에러 매핑 | `auth_failed` / `token_exchange` / `user_info` / `server_error` | i18n 가능 |
+| 6 | NavBar 사용자 | `GET /api/auth/me`로 정보 로드 | 401 → 비로그인 |
+| 7 | 아바타 | `profileImage` 있으면 `<img>`, 없으면 이름 첫 글자 | 폴백 |
+| 8 | 로그아웃 | `POST /api/auth/logout` → 쿠키 삭제 → `/login` | API Spec |
+| 9 | 모바일 버튼 | 최소 44×44px (WCAG 2.5.5) | 터치 타겟 |
+| 10 | 반응형 | `max-w-sm` + `px-4`로 자연 대응 | 미디어 쿼리 불필요 |
+
+### 1.4 API 엔드포인트
+
+| Method | Path | 설명 | 응답 |
+|--------|------|------|------|
+| GET | `/api/auth/{provider}` | 소셜 로그인 시작 | 302 → OAuth |
+| GET | `/api/auth/{provider}/callback` | OAuth 콜백 | 302 → `/` 또는 `/login?error=` |
+| POST | `/api/auth/logout` | 로그아웃 | 200 `{ ok: true }` |
+| GET | `/api/auth/me` | 현재 사용자 조회 | 200 user / 401 |
+
+### 1.5 엣지 케이스 & 정책
+
+- **E1** 이미 로그인된 상태로 `/login` 접근 → `/`로 리다이렉트
+- **E2** JWT 만료 → `GET /me` 401 → 세션 쿠키 삭제 → `/login`
+- **E3** OAuth 제공자 거부(사용자 취소) → `/login?error=auth_failed`
+- **E4** 지원하지 않는 provider → `/login?error=auth_failed`
+- **E5** 동일 이메일 다른 제공자 → 별도 계정으로 처리(추후 연동 검토)
+
+### 1.6 구현 상태
+
+- [x] 로그인 페이지 UI (소셜 버튼 3종)
+- [x] OAuth 라우트 (`{provider}`, `callback`, `logout`, `me`)
+- [x] JWT 발급/검증 (Hono JWT HS256)
+- [x] 에러 메시지 표시
+- [x] 로그인 후 홈 리다이렉트 + NavBar
+- [x] 이미 로그인 시 `/login → /` 리다이렉트
+- [ ] JWT 만료 시 자동 로그아웃 처리
+
+---
+
+## 2. 미팅 생성 (`/meeting/new`)
+
+### 2.1 Feature Brief
+
+| 항목 | 값 | 메모 |
+|------|-----|------|
+| Route | `/meeting/new` | 인증 필수, 미로그인 → `/login` |
+| Layout | 싱글 페이지 | 한 페이지 스크롤로 모든 입력 완료 |
+| 참고 | When2meet | 날짜 → 시간 범위 → 공유 |
+| 시간 범위 | 00:00 ~ 24:00 | 30분 단위, 48 슬롯/일 |
+| 공유 방식 | 링크 + 초대 코드 | 생성 후 모달에서 복사 |
+| 재사용 컴포넌트 | `Calendar`, `TimeGrid` | date-picker, time-picker 위젯 |
+
+### 2.2 사용자 플로우
+
+1. 홈 `/`에서 "새 미팅 만들기" 클릭
+2. `/meeting/new`에서 제목·설명·장소·후보 날짜·시간 범위 입력
+3. `POST /api/meetings` 호출
+4. 성공 → 공유 모달(링크 + 초대 코드) 노출
+5. "미팅 페이지로 이동" → `/meeting/{id}` / "홈으로 돌아가기" → `/`
+6. 실패 → 입력값 보존하고 에러 토스트 표시
+
+### 2.3 화면 구성
+
+<CardGrid>
+  <Card title="Screen 01 — Default" icon="document">
+    제목/설명/장소 입력 + Calendar + 시간 범위 + TimeGrid 미리보기 + 제출 버튼.
+  </Card>
+  <Card title="Screen 02 — Success Modal" icon="approve-check">
+    공유 링크(`/m/{shortId}`)와 초대 코드(`ABC-1234`) 복사. 백드롭 클릭으로는 닫히지 않음.
+  </Card>
+  <Card title="Screen 03 — Mobile (375px)" icon="laptop">
+    싱글 컬럼, 큰 버튼, TimeGrid는 가로 스크롤 또는 숨김 처리 가능.
+  </Card>
+  <Card title="Screen 04 — Validation/Error" icon="warning">
+    필수 항목 미입력 시 인라인 에러, 서버 오류 시 상단 배너.
+  </Card>
+</CardGrid>
+
+### 2.4 폼 필드 구성
+
+| 필드 | 필수 | 제약 | 비고 |
+|------|------|------|------|
+| `title` | 필수 | 1~50자 | 제목 |
+| `description` | 선택 | 최대 200자 | 본문 설명 |
+| `location` | 선택 | 최대 100자 | 자유 텍스트 |
+| `dates` | 필수 | ISO 날짜 1~14개 | `["2026-04-20", ...]` |
+| `startTime` | 필수 | `HH:mm` | 기본 `00:00` |
+| `endTime` | 필수 | `HH:mm`, `> startTime` | 기본 `24:00` |
+
+### 2.5 어노테이션
+
+| # | 항목 | 핵심 동작 |
+|---|------|-----------|
+| 1 | 인증 가드 | `useAuth()`로 비로그인 시 `/login` 이동, 로딩 중 스켈레톤 |
+| 2 | 폼 검증 | 클라이언트 + 서버 양측 검증, 첫 에러 필드 `scrollIntoView()` |
+| 3 | Calendar | `minDate=오늘`, `maxDate=오늘+30일`, 드래그 + Shift+클릭 |
+| 4 | 시간 범위 | `<select>` 드롭다운, 30분 간격, `endTime > startTime` 검증 |
+| 5 | TimeGrid 미리보기 | 날짜·시간 입력 시 자동 표시(읽기 전용) |
+| 6 | 제출 버튼 | 제목 + 날짜 1개+ 입력되면 활성화, 제출 중 스피너 |
+| 7 | 성공 모달 | `POST /api/meetings` 201 응답, ESC로만 닫힘 |
+| 8 | 공유 자원 | `/m/{shortId}` 링크 + 8자리 초대 코드 |
+| 9 | 후속 액션 | 미팅 페이지 이동 / 홈 복귀 |
+| 10 | 모바일 | 단일 컬럼, 44px+ 터치 타겟 |
+| 11 | 터치 드래그 | `touch-action: none` + `elementFromPoint()` |
+| 12 | 클라 검증 | 비어있는 제목/날짜, 글자수 초과 시 인라인 에러 |
+| 13 | 서버 에러 | 폼 하단 배너, 입력값 보존, 코드별 메시지 |
+
+### 2.6 데이터 모델 요약
+
+`CreateMeetingRequest` (클라이언트 → 서버)
+
+| Field | Type | Required | 설명 |
+|-------|------|----------|------|
+| `title` | string | 필수 | 미팅 제목(1~50자) |
+| `description` | string | 선택 | 설명(최대 200자) |
+| `location` | string | 선택 | 장소(최대 100자) |
+| `dates` | string[] | 필수 | ISO 날짜 배열 |
+| `startTime` | string | 필수 | `HH:mm` |
+| `endTime` | string | 필수 | `HH:mm`, `> startTime` |
+
+자세한 응답 스키마는 [Meeting API (Swagger)](/api/meeting/) 참고.
+
+### 2.7 엣지 케이스
+
+- 필수 항목 누락: 인라인 에러 + 첫 필드로 스크롤
+- 30일 초과 미래 날짜: Calendar에서 비활성
+- 시간 범위 역전(`end <= start`): 선택 직후 인라인 에러
+- 네트워크 오류: "인터넷 연결을 확인해주세요" 배너
+- 서버 5xx: 입력값 보존 + 재시도 가능 토스트
+
+---
+
+## 3. 원본 HTML
+
+원본 픽셀 정확한 와이어프레임은 새 창에서 확인할 수 있습니다.
+
+- [로그인 와이어프레임 원본](/wireframes/01.auth-wireframe-login.html)
+- [미팅 생성 와이어프레임 원본](/wireframes/02.meeting-new-wireframe.html)
