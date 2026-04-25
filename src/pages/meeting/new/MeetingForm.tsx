@@ -376,7 +376,7 @@ export function MeetingForm({
 								</span>
 							</div>
 
-							<div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-background p-4 sm:p-5">
+							<div className="flex justify-center overflow-hidden rounded-[1.5rem] border border-border/70 bg-background p-4 sm:p-5">
 								<Calendar
 									selected={form.selectedDates}
 									onSelectionChange={handleDatesChange}
@@ -479,12 +479,14 @@ export function MeetingForm({
 									</span>
 								</div>
 								<div className="overflow-x-auto rounded-[1.5rem] border border-border/70 bg-background p-3 sm:p-4">
-									<TimeGrid
-										dates={previewColumnDates}
-										timeSlots={previewTimeSlots}
-										selected={emptySlots}
-										onSelectionChange={noop}
-									/>
+									<div className="flex justify-center">
+										<TimeGrid
+											dates={previewColumnDates}
+											timeSlots={previewTimeSlots}
+											selected={emptySlots}
+											onSelectionChange={noop}
+										/>
+									</div>
 								</div>
 							</div>
 						</FormSection>
