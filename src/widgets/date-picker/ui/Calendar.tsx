@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/src/shared";
 import type { CalendarProps, DateKey } from "../model/types";
 
@@ -197,6 +197,9 @@ export function Calendar({
     }, [rangeAnchor, rangeEnd, selected, onSelectionChange, getRangeDates]);
 
     // ── 드래그 선택 (터치) ──
+    // React onTouchMove는 passive이므로 preventDefault가 무시됩니다.
+    // 명시적으로 { passive: false }로 네이티브 리스너를 붙입니다.
+    const containerRef = useRef<HTMLDivElement | null>(null);
     const touchDateRef = useRef<Date | null>(null);
 
     const handleTouchStart = useCallback(
@@ -210,25 +213,43 @@ export function Calendar({
         [isDisabled],
     );
 
-    const handleTouchMove = useCallback(
-        (e: React.TouchEvent) => {
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+
+        const onTouchMoveNative = (e: TouchEvent) => {
             if (!isDragging.current) return;
-            e.preventDefault();
             const touch = e.touches[0];
-            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-            const dateStr = el?.getAttribute("data-date");
+            if (!touch) return;
+            // 드래그 중에는 스크롤을 막아서 안정적인 범위 선택을 보장
+            e.preventDefault();
+            const target = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY,
+            );
+            const cell = target?.closest<HTMLElement>("[data-date]");
+            const dateStr = cell?.getAttribute("data-date");
             if (!dateStr) return;
             const date = new Date(`${dateStr}T00:00:00`);
-            if (!isDisabled(date)) {
-                setRangeEnd(date);
-            }
-        },
-        [isDisabled],
-    );
+            if (Number.isNaN(date.getTime())) return;
+            if (isDisabled(date)) return;
+            // 이전과 같은 셀이면 상태 업데이트 생략 (렌더 떨주함 방지)
+            const last = touchDateRef.current;
+            if (last && isSameDay(last, date)) return;
+            touchDateRef.current = date;
+            setRangeEnd(date);
+        };
+
+        el.addEventListener("touchmove", onTouchMoveNative, { passive: false });
+        return () => {
+            el.removeEventListener("touchmove", onTouchMoveNative);
+        };
+    }, [isDisabled]);
 
     const handleTouchEnd = useCallback(() => {
         if (!isDragging.current || !rangeAnchor || !rangeEnd) {
             isDragging.current = false;
+            touchDateRef.current = null;
             return;
         }
 
@@ -270,12 +291,13 @@ export function Calendar({
     return (
         // biome-ignore lint/a11y/noStaticElementInteractions: custom drag-select calendar widget
         <div
+            ref={containerRef}
             className="inline-block w-full max-w-sm select-none"
             style={{ touchAction: "none" }}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
         >
             {/* 헤더 */}
             <div className="mb-2 flex items-center justify-between">

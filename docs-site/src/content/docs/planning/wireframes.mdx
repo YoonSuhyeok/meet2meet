@@ -109,7 +109,7 @@ import WireframeFull from "../../../components/WireframeFull.astro";
 - [x] 에러 메시지 표시
 - [x] 로그인 후 홈 리다이렉트 + NavBar
 - [x] 이미 로그인 시 `/login → /` 리다이렉트
-- [ ] JWT 만료 시 자동 로그아웃 처리
+- [x] JWT 만료 시 자동 로그아웃 처리 (`apiFetch` + `exp` 클레임 검사)
 
 ---
 
@@ -246,8 +246,8 @@ import WireframeFull from "../../../components/WireframeFull.astro";
 - [x] `POST /api/meetings` 연동 + 성공 모달(공유 링크/초대 코드)
 - [x] 클라이언트 검증 (제목/날짜/글자수)
 - [x] 모바일 레이아웃 (단일 컬럼, 44px+ 터치 타겟)
-- [ ] 터치 드래그 날짜 선택 (`elementFromPoint`) 안정화
-- [ ] 서버 에러 코드별 메시지 매핑 마감
+- [x] 터치 드래그 날짜 선택 (`elementFromPoint` 안정화, passive:false touchmove)
+- [x] 서버 에러 코드별 메시지 매핑 (`{ code, message }` 응답 파싱)
 - [ ] 초대 코드 재발급/만료 정책
 
 ---
