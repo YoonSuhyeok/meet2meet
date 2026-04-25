@@ -1,0 +1,68 @@
+---
+const { src, title } = Astro.props;
+const frameId = `wf-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div class="wireframe-full">
+  <iframe id={frameId} src={src} title={title} loading="lazy" scrolling="no"></iframe>
+</div>
+
+<script is:inline define:vars={{ frameId }}>
+  (() => {
+    const frame = document.getElementById(frameId);
+    if (!frame) return;
+
+    const fitHeight = () => {
+      try {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+
+        const next = Math.max(
+          doc.documentElement ? doc.documentElement.scrollHeight : 0,
+          doc.body ? doc.body.scrollHeight : 0,
+        );
+
+        if (next > 0) {
+          frame.style.height = `${next}px`;
+        }
+      } catch {
+        // same-origin 문서에서만 높이 자동 조정 가능
+      }
+    };
+
+    frame.addEventListener("load", () => {
+      fitHeight();
+      setTimeout(fitHeight, 100);
+      setTimeout(fitHeight, 500);
+      setTimeout(fitHeight, 1200);
+    });
+
+    window.addEventListener("resize", fitHeight);
+  })();
+</script>
+
+<style>
+  .wireframe-full {
+    width: 100%;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    margin: 1rem 0 2rem;
+  }
+
+  .wireframe-full iframe {
+    display: block;
+    width: 100%;
+    min-height: 85vh;
+    border: 0;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  @media (max-width: 900px) {
+    .wireframe-full iframe {
+      min-height: 70vh;
+    }
+  }
+</style>
