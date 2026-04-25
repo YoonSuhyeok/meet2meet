@@ -1,0 +1,6 @@
+/* Site-wide customizations for Starlight. */
+
+:root {
+	--sl-font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+		"Helvetica Neue", Arial, sans-serif;
+}

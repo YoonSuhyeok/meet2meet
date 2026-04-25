@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet2Meet — Auth Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+        :root {
+          --canvas: #1a1a2e;
+          --surface: #16213e;
+          --accent: #e94560;
+          --accent-soft: rgba(233,69,96,0.15);
+          --text: #eee;
+          --text-dim: #8892a4;
+          --text-muted: #5a6377;
+          --border: #2a3a5c;
+          --wire-bg: #f8f9fb;
+          --wire-border: #e2e5ea;
+          --wire-text: #1a1a1a;
+          --wire-dim: #6b7280;
+          --naver: #03C75A;
+          --kakao: #FEE500;
+          --kakao-text: #191919;
+          --green: #34d399;
+          --blue: #60a5fa;
+          --yellow: #fbbf24;
+          --red: #f87171;
+        }
+    
+        body {
+          font-family: 'Inter', -apple-system, sans-serif;
+          background: var(--canvas);
+          color: var(--text);
+          line-height: 1.5;
+        }
+    
+        /* ── Toolbar ── */
+        .toolbar {
+          position: sticky; top: 0; z-index: 100;
+          background: rgba(26,26,46,0.92);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--border);
+          padding: 12px 32px;
+          display: flex; align-items: center; justify-content: space-between;
+        }
+        .toolbar-left { display: flex; align-items: center; gap: 16px; }
+        .toolbar-title { font-size: 14px; font-weight: 600; }
+        .toolbar-breadcrumb { font-size: 12px; color: var(--text-dim); }
+        .toolbar-actions { display: flex; gap: 8px; }
+        .toolbar-btn {
+          background: var(--surface); border: 1px solid var(--border);
+          color: var(--text-dim); font-size: 12px; padding: 6px 14px;
+          border-radius: 6px; cursor: pointer; transition: all 0.15s; font-family: inherit;
+        }
+        .toolbar-btn:hover { color: var(--text); border-color: var(--text-dim); }
+        .toolbar-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    
+        /* ── Section ── */
+        .doc-section { max-width: 1280px; margin: 0 auto; padding: 48px 32px; }
+        .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+        .section-number {
+          width: 28px; height: 28px; border-radius: 8px;
+          background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .section-title { font-size: 18px; font-weight: 700; }
+        .section-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+    
+        /* ── Flow ── */
+        .flow-container { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 24px 0; }
+        .flow-node {
+          padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500;
+          white-space: nowrap; text-align: center; flex-shrink: 0;
+        }
+        .flow-node .flow-sub { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+        .flow-arrow { color: var(--text-muted); font-size: 18px; padding: 0 6px; flex-shrink: 0; }
+    
+        /* ── Screen Card ── */
+        .screen-row {
+          display: grid; grid-template-columns: auto 1fr; gap: 0;
+          margin-bottom: 48px; background: var(--surface);
+          border-radius: 16px; border: 1px solid var(--border); overflow: hidden;
+        }
+        .screen-row.reverse { grid-template-columns: 1fr auto; }
+        .screen-row.reverse .screen-wireframe { order: 2; }
+        .screen-row.reverse .annotation-panel { order: 1; border-right: 1px solid var(--border); border-left: none; }
+    
+        .screen-wireframe {
+          padding: 32px; display: flex; flex-direction: column;
+          align-items: center; gap: 16px; position: relative;
+        }
+        .screen-tag {
+          align-self: flex-start; font-size: 11px; font-weight: 600;
+          color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;
+        }
+    
+        /* ── Device Frame ── */
+        .device-frame {
+          background: var(--wire-bg); border-radius: 16px; border: 2px solid var(--wire-border);
+          overflow: hidden; width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); position: relative;
+        }
+        .device-frame.wide { width: 480px; }
+        .device-chrome {
+          background: #fff; border-bottom: 1px solid var(--wire-border);
+          padding: 8px 12px; display: flex; align-items: center; gap: 6px;
+        }
+        .chrome-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wire-border); }
+        .chrome-url {
+          flex: 1; background: #f3f4f6; border-radius: 4px; padding: 3px 8px;
+          font-size: 10px; color: var(--wire-dim); font-family: monospace;
+        }
+        .device-body { padding: 0; min-height: 440px; position: relative; }
+    
+        .wire-content { padding: 32px 24px; color: var(--wire-text); position: relative; }
+        .wire-centered {
+          display: flex; flex-direction: column; align-items: center;
+          justify-content: center; min-height: 400px;
+        }
+    
+        /* ── Callout Markers ── */
+        .callout-marker {
+          position: absolute; width: 22px; height: 22px; border-radius: 50%;
+          background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; z-index: 10;
+          transition: transform 0.15s, box-shadow 0.15s;
+          box-shadow: 0 0 0 3px rgba(233,69,96,0.3);
+        }
+        .callout-marker:hover { transform: scale(1.2); box-shadow: 0 0 0 5px rgba(233,69,96,0.4); }
+        .callout-marker.active { box-shadow: 0 0 0 5px rgba(233,69,96,0.6); }
+    
+        /* ── Annotation Panel ── */
+        .annotation-panel {
+          border-left: 1px solid var(--border); padding: 24px; width: 340px;
+          display: flex; flex-direction: column; gap: 0;
+        }
+        .annotation-panel-title {
+          font-size: 11px; font-weight: 600; text-transform: uppercase;
+          letter-spacing: 0.5px; color: var(--text-muted);
+          margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+        }
+        .annotation-item {
+          display: flex; gap: 12px; padding: 12px 8px;
+          border-bottom: 1px solid rgba(42,58,92,0.5);
+          cursor: pointer; transition: background 0.15s; border-radius: 6px;
+        }
+        .annotation-item:last-child { border-bottom: none; }
+        .annotation-item:hover { background: rgba(233,69,96,0.08); }
+        .annotation-item.highlight { background: var(--accent-soft); }
+        .annotation-num {
+          width: 22px; height: 22px; border-radius: 50%;
+          background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+        }
+        .annotation-body { flex: 1; min-width: 0; }
+        .annotation-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .annotation-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+        .annotation-desc code {
+          background: rgba(96,165,250,0.15); color: var(--blue);
+          padding: 1px 5px; border-radius: 3px; font-size: 11px;
+        }
+        .annotation-link {
+          display: inline-flex; align-items: center; gap: 4px;
+          font-size: 11px; color: var(--accent); margin-top: 6px;
+          text-decoration: none; opacity: 0.8;
+        }
+        .annotation-link:hover { opacity: 1; text-decoration: underline; }
+    
+        /* ── Wire UI ── */
+        .wire-btn {
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          width: 100%; padding: 12px; border-radius: 10px; font-size: 14px;
+          font-weight: 500; text-decoration: none; border: none; cursor: default;
+        }
+        .wire-btn-naver { background: var(--naver); color: #fff; }
+        .wire-btn-kakao { background: var(--kakao); color: var(--kakao-text); }
+        .wire-btn-google { background: #fff; color: #333; border: 1px solid #ddd; }
+        .wire-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+    
+        .wire-error-banner {
+          background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+          padding: 10px 14px; font-size: 13px; color: #dc2626;
+        }
+        .wire-avatar {
+          width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 12px; font-weight: 600; color: #6b7280;
+        }
+        .wire-nav {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 16px 24px; border-bottom: 1px solid var(--wire-border);
+        }
+        .wire-small-btn {
+          font-size: 11px; color: var(--wire-dim); border: 1px solid var(--wire-border);
+          border-radius: 6px; padding: 4px 10px; background: #fff; cursor: default;
+        }
+    
+        /* ── API Table ── */
+        .api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .api-table th {
+          text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase;
+          letter-spacing: 0.5px; color: var(--text-muted); padding: 10px 16px;
+          border-bottom: 1px solid var(--border);
+        }
+        .api-table td { padding: 12px 16px; border-bottom: 1px solid rgba(42,58,92,0.4); color: var(--text-dim); }
+        .api-table tr:last-child td { border-bottom: none; }
+        .api-method { font-family: monospace; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+        .api-method.get { background: rgba(52,211,153,0.15); color: var(--green); }
+        .api-method.post { background: rgba(251,191,36,0.15); color: var(--yellow); }
+        .api-path { font-family: monospace; font-size: 12px; color: var(--text); }
+    
+        /* ── Edge Cases ── */
+        .edge-item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(42,58,92,0.4); }
+        .edge-item:last-child { border-bottom: none; }
+        .edge-code {
+          font-family: monospace; font-size: 11px; font-weight: 600;
+          background: rgba(96,165,250,0.1); color: var(--blue);
+          padding: 2px 8px; border-radius: 4px; height: fit-content; flex-shrink: 0;
+        }
+        .edge-text { font-size: 13px; color: var(--text-dim); }
+        .edge-text strong { color: var(--text); font-weight: 600; }
+        .edge-text code { background: rgba(96,165,250,0.12); color: var(--blue); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+    
+        /* ── Status ── */
+        .status-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; }
+        .status-done { color: var(--green); }
+        .status-todo { color: var(--text-muted); }
+    
+        /* ── Toggle ── */
+        .annotations-hidden .callout-marker { display: none !important; }
+        .annotations-hidden .annotation-panel { display: none !important; }
+        .annotations-hidden .screen-row,
+        .annotations-hidden .screen-row.reverse { grid-template-columns: 1fr; }
+    
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+          .screen-row, .screen-row.reverse { grid-template-columns: 1fr; }
+          .screen-row.reverse .screen-wireframe { order: 1; }
+          .screen-row.reverse .annotation-panel { order: 2; border-left: none; border-right: none; border-top: 1px solid var(--border); }
+          .annotation-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+          .device-frame, .device-frame.wide { width: 100%; max-width: 360px; }
+        }
+    
+        .flash-highlight { animation: flash 1.5s ease; }
+        @keyframes flash {
+          0% { box-shadow: 0 0 0 0 rgba(233,69,96,0.5); }
+          50% { box-shadow: 0 0 0 6px rgba(233,69,96,0.15); }
+          100% { box-shadow: 0 0 0 0 transparent; }
+        }
+  </style>
+</head>
+<body id="doc-body">
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-title">Meet2Meet</div>
+      <div class="toolbar-breadcrumb">Features / Auth / Wireframe</div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="toolbar-btn active" id="btn-annotations" onclick="toggleAnnotations()">Annotations</button>
+      <button class="toolbar-btn" onclick="scrollTo('api-section')">API Spec</button>
+      <button class="toolbar-btn" onclick="scrollTo('edge-section')">Edge Cases</button>
+    </div>
+  </div>
+
+  <!-- ═══ 01. Flow ═══ -->
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <div class="section-title">User Flow</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; overflow-x: auto;">
+      <div class="flow-container">
+        <div class="flow-node" style="background: rgba(96,165,250,0.12); color: var(--blue);">/login<div class="flow-sub">로그인 페이지</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.12); color: var(--green);">GET /api/auth/{provider}<div class="flow-sub">302 → OAuth</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(168,85,247,0.12); color: #a855f7;">소셜 제공자<div class="flow-sub">사용자 인증</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.12); color: var(--green);">GET /.../callback<div class="flow-sub">code → JWT</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.2); color: var(--green); border: 1px solid rgba(52,211,153,0.3);">/ (홈)<div class="flow-sub">Set-Cookie: session</div></div>
+      </div>
+      <div style="margin-top: 8px; text-align: right;"><span style="font-size: 11px; color: var(--red);">⚠ 실패 시 → /login?error={code}</span></div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 02. Screens ═══ -->
+  <div class="doc-section">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <div class="section-title">Screen Design</div>
+    </div>
+
+    <!-- Screen 1: Login Default -->
+    <div class="screen-row">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 01 — Login Default</div>
+        <div class="device-frame">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/login</div>
+          </div>
+          <div class="device-body">
+            <span class="callout-marker" style="top:8px;right:8px" data-note="1" onclick="highlightNote(1)">1</span>
+            <span class="callout-marker" style="top:50%;left:8px;transform:translateY(-50%)" data-note="2" onclick="highlightNote(2)">2</span>
+            <span class="callout-marker" style="bottom:150px;right:8px" data-note="3" onclick="highlightNote(3)">3</span>
+            <div class="wire-content wire-centered">
+              <div style="width:100%;max-width:280px;text-align:center;">
+                <h1 style="font-size:22px;font-weight:700;color:var(--wire-text);margin-bottom:6px;">Meet2Meet</h1>
+                <p style="font-size:13px;color:var(--wire-dim);margin-bottom:32px;">소셜 계정으로 간편하게 시작하세요</p>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:32px;">
+                  <div class="wire-btn wire-btn-naver"><svg viewBox="0 0 20 20" fill="none"><path d="M13.56 10.7L6.15 0H0v20h6.44V9.3L13.85 20H20V0h-6.44v10.7z" fill="currentColor"/></svg>네이버로 시작하기</div>
+                  <div class="wire-btn wire-btn-kakao"><svg viewBox="0 0 20 20" fill="none"><path d="M10 1C4.48 1 0 4.45 0 8.68c0 2.7 1.8 5.08 4.5 6.44-.15.56-.97 3.6-.99 3.83 0 0-.02.17.09.24.11.06.24.01.24.01.32-.05 3.7-2.44 4.28-2.86.6.09 1.23.14 1.88.14 5.52 0 10-3.45 10-7.8S15.52 1 10 1z" fill="currentColor"/></svg>카카오로 시작하기</div>
+                  <div class="wire-btn wire-btn-google"><svg viewBox="0 0 20 20"><path d="M19.6 10.23c0-.68-.06-1.36-.17-2.02H10v3.84h5.38a4.6 4.6 0 0 1-2 3.01v2.49h3.23c1.89-1.74 2.99-4.3 2.99-7.32z" fill="#4285F4"/><path d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.23-2.5c-.9.6-2.04.95-3.39.95-2.6 0-4.81-1.76-5.6-4.12H1.07v2.58A9.99 9.99 0 0 0 10 20z" fill="#34A853"/><path d="M4.4 11.91A6 6 0 0 1 4.08 10c0-.67.12-1.31.32-1.91V5.51H1.07A9.99 9.99 0 0 0 0 10c0 1.61.39 3.14 1.07 4.49l3.33-2.58z" fill="#FBBC05"/><path d="M10 3.96c1.47 0 2.79.5 3.82 1.5l2.86-2.86C14.96.99 12.7 0 10 0A9.99 9.99 0 0 0 1.07 5.51L4.4 8.09C5.19 5.73 7.4 3.96 10 3.96z" fill="#EA4335"/></svg>Google로 시작하기</div>
+                </div>
+                <p style="font-size:11px;color:#9ca3af;">로그인 시 <u>이용약관</u> 및 <u>개인정보처리방침</u>에 동의</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-1">
+          <div class="annotation-num">1</div>
+          <div class="annotation-body">
+            <div class="annotation-title">이미 로그인 상태 → 리다이렉트</div>
+            <div class="annotation-desc"><code>GET /api/auth/me</code>로 세션 확인 후, 인증된 상태면 <code>/</code>로 리다이렉트</div>
+            <a class="annotation-link" href="#edge-section" onclick="scrollTo('edge-section')">→ Edge Case E1</a>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-2">
+          <div class="annotation-num">2</div>
+          <div class="annotation-body">
+            <div class="annotation-title">Guard 리다이렉트</div>
+            <div class="annotation-desc">비로그인 사용자가 보호 페이지 접근 시 이 페이지로 리다이렉트. Guard 미들웨어에서 처리.</div>
+            <a class="annotation-link" href="#edge-section" onclick="scrollTo('edge-section')">→ Edge Case</a>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-3">
+          <div class="annotation-num">3</div>
+          <div class="annotation-body">
+            <div class="annotation-title">OAuth 시작</div>
+            <div class="annotation-desc">버튼 클릭 → <code>GET /api/auth/{provider}</code> → 302 Redirect로 소셜 OAuth 페이지로 이동</div>
+            <a class="annotation-link" href="#api-section" onclick="scrollTo('api-section')">→ API Spec</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: Login Error -->
+    <div class="screen-row reverse">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 02 — Login Error</div>
+        <div class="device-frame">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/login?error=auth_failed</div>
+          </div>
+          <div class="device-body">
+            <span class="callout-marker" style="top:70px;right:8px" data-note="4" onclick="highlightNote(4)">4</span>
+            <span class="callout-marker" style="top:70px;left:8px" data-note="5" onclick="highlightNote(5)">5</span>
+            <div class="wire-content wire-centered">
+              <div style="width:100%;max-width:280px;text-align:center;">
+                <h1 style="font-size:22px;font-weight:700;color:var(--wire-text);margin-bottom:6px;">Meet2Meet</h1>
+                <p style="font-size:13px;color:var(--wire-dim);margin-bottom:24px;">소셜 계정으로 간편하게 시작하세요</p>
+                <div class="wire-error-banner" style="margin-bottom:24px;text-align:left;">소셜 인증에 실패했습니다. 다시 시도해주세요.</div>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:32px;">
+                  <div class="wire-btn wire-btn-naver"><svg viewBox="0 0 20 20" fill="none"><path d="M13.56 10.7L6.15 0H0v20h6.44V9.3L13.85 20H20V0h-6.44v10.7z" fill="currentColor"/></svg>네이버로 시작하기</div>
+                  <div class="wire-btn wire-btn-kakao"><svg viewBox="0 0 20 20" fill="none"><path d="M10 1C4.48 1 0 4.45 0 8.68c0 2.7 1.8 5.08 4.5 6.44-.15.56-.97 3.6-.99 3.83 0 0-.02.17.09.24.11.06.24.01.24.01.32-.05 3.7-2.44 4.28-2.86.6.09 1.23.14 1.88.14 5.52 0 10-3.45 10-7.8S15.52 1 10 1z" fill="currentColor"/></svg>카카오로 시작하기</div>
+                  <div class="wire-btn wire-btn-google"><svg viewBox="0 0 20 20"><path d="M19.6 10.23c0-.68-.06-1.36-.17-2.02H10v3.84h5.38a4.6 4.6 0 0 1-2 3.01v2.49h3.23c1.89-1.74 2.99-4.3 2.99-7.32z" fill="#4285F4"/><path d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.23-2.5c-.9.6-2.04.95-3.39.95-2.6 0-4.81-1.76-5.6-4.12H1.07v2.58A9.99 9.99 0 0 0 10 20z" fill="#34A853"/><path d="M4.4 11.91A6 6 0 0 1 4.08 10c0-.67.12-1.31.32-1.91V5.51H1.07A9.99 9.99 0 0 0 0 10c0 1.61.39 3.14 1.07 4.49l3.33-2.58z" fill="#FBBC05"/><path d="M10 3.96c1.47 0 2.79.5 3.82 1.5l2.86-2.86C14.96.99 12.7 0 10 0A9.99 9.99 0 0 0 1.07 5.51L4.4 8.09C5.19 5.73 7.4 3.96 10 3.96z" fill="#EA4335"/></svg>Google로 시작하기</div>
+                </div>
+                <p style="font-size:11px;color:#9ca3af;">로그인 시 <u>이용약관</u> 및 <u>개인정보처리방침</u>에 동의</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-4">
+          <div class="annotation-num">4</div>
+          <div class="annotation-body">
+            <div class="annotation-title">에러 쿼리 파라미터</div>
+            <div class="annotation-desc">콜백 실패 시 <code>/login?error={code}</code> 형태로 리다이렉트. error 파라미터를 읽어 배너 표시.</div>
+            <a class="annotation-link" href="#api-section" onclick="scrollTo('api-section')">→ API Spec</a>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-5">
+          <div class="annotation-num">5</div>
+          <div class="annotation-body">
+            <div class="annotation-title">에러 코드 → 메시지 매핑</div>
+            <div class="annotation-desc">
+              • <code>auth_failed</code> → 소셜 인증 실패<br>
+              • <code>token_exchange</code> → 인증 처리 중 오류<br>
+              • <code>user_info</code> → 사용자 정보 조회 실패<br>
+              • <code>server_error</code> → 서버 내부 오류
+            </div>
+            <a class="annotation-link" href="#edge-section" onclick="scrollTo('edge-section')">→ Edge Cases</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: Home -->
+    <div class="screen-row">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 03 — Home (Authenticated)</div>
+        <div class="device-frame wide">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/</div>
+          </div>
+          <div class="device-body">
+            <span class="callout-marker" style="top:42px;left:8px" data-note="6" onclick="highlightNote(6)">6</span>
+            <span class="callout-marker" style="top:42px;right:52px" data-note="7" onclick="highlightNote(7)">7</span>
+            <span class="callout-marker" style="top:42px;right:8px" data-note="8" onclick="highlightNote(8)">8</span>
+            <div class="wire-nav">
+              <div style="font-size:16px;font-weight:700;color:var(--wire-text);">Meet2Meet</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="wire-avatar">홍</div>
+                <div class="wire-small-btn">로그아웃</div>
+              </div>
+            </div>
+            <div style="text-align:center;padding:80px 24px;">
+              <h2 style="font-size:17px;font-weight:600;color:var(--wire-text);line-height:1.6;">드래그 기반 시간 선택으로<br>모임 일정을 잡아보세요.</h2>
+              <div style="margin-top:24px;"><span style="background:var(--wire-text);color:#fff;padding:10px 24px;border-radius:10px;font-size:14px;font-weight:500;">새 미팅 만들기</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-6">
+          <div class="annotation-num">6</div>
+          <div class="annotation-body">
+            <div class="annotation-title">사용자 정보 로드</div>
+            <div class="annotation-desc"><code>GET /api/auth/me</code> 호출.<br>200 → 사용자 정보 표시<br>401 → 비로그인 상태</div>
+            <a class="annotation-link" href="#api-section" onclick="scrollTo('api-section')">→ API Spec</a>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-7">
+          <div class="annotation-num">7</div>
+          <div class="annotation-body">
+            <div class="annotation-title">아바타 렌더링</div>
+            <div class="annotation-desc">profileImage 있으면 <code>&lt;img&gt;</code>으로 표시. 없으면 이름 첫 글자를 원형 배경에 표시.</div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-8">
+          <div class="annotation-num">8</div>
+          <div class="annotation-body">
+            <div class="annotation-title">로그아웃</div>
+            <div class="annotation-desc"><code>POST /api/auth/logout</code> → session 쿠키 삭제 → <code>/login</code>으로 이동</div>
+            <a class="annotation-link" href="#api-section" onclick="scrollTo('api-section')">→ API Spec</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 4: Mobile -->
+    <div class="screen-row reverse">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 04 — Mobile (375px)</div>
+        <div class="device-frame" style="width:320px;">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/login</div>
+          </div>
+          <div class="device-body">
+            <span class="callout-marker" style="bottom:150px;right:6px" data-note="9" onclick="highlightNote(9)">9</span>
+            <span class="callout-marker" style="top:8px;right:6px" data-note="10" onclick="highlightNote(10)">10</span>
+            <div class="wire-content wire-centered">
+              <div style="width:100%;text-align:center;">
+                <h1 style="font-size:22px;font-weight:700;color:var(--wire-text);margin-bottom:6px;">Meet2Meet</h1>
+                <p style="font-size:13px;color:var(--wire-dim);margin-bottom:32px;">소셜 계정으로 간편하게 시작하세요</p>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:32px;">
+                  <div class="wire-btn wire-btn-naver" style="padding:14px;"><svg viewBox="0 0 20 20" fill="none"><path d="M13.56 10.7L6.15 0H0v20h6.44V9.3L13.85 20H20V0h-6.44v10.7z" fill="currentColor"/></svg>네이버로 시작하기</div>
+                  <div class="wire-btn wire-btn-kakao" style="padding:14px;"><svg viewBox="0 0 20 20" fill="none"><path d="M10 1C4.48 1 0 4.45 0 8.68c0 2.7 1.8 5.08 4.5 6.44-.15.56-.97 3.6-.99 3.83 0 0-.02.17.09.24.11.06.24.01.24.01.32-.05 3.7-2.44 4.28-2.86.6.09 1.23.14 1.88.14 5.52 0 10-3.45 10-7.8S15.52 1 10 1z" fill="currentColor"/></svg>카카오로 시작하기</div>
+                  <div class="wire-btn wire-btn-google" style="padding:14px;"><svg viewBox="0 0 20 20"><path d="M19.6 10.23c0-.68-.06-1.36-.17-2.02H10v3.84h5.38a4.6 4.6 0 0 1-2 3.01v2.49h3.23c1.89-1.74 2.99-4.3 2.99-7.32z" fill="#4285F4"/><path d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.23-2.5c-.9.6-2.04.95-3.39.95-2.6 0-4.81-1.76-5.6-4.12H1.07v2.58A9.99 9.99 0 0 0 10 20z" fill="#34A853"/><path d="M4.4 11.91A6 6 0 0 1 4.08 10c0-.67.12-1.31.32-1.91V5.51H1.07A9.99 9.99 0 0 0 0 10c0 1.61.39 3.14 1.07 4.49l3.33-2.58z" fill="#FBBC05"/><path d="M10 3.96c1.47 0 2.79.5 3.82 1.5l2.86-2.86C14.96.99 12.7 0 10 0A9.99 9.99 0 0 0 1.07 5.51L4.4 8.09C5.19 5.73 7.4 3.96 10 3.96z" fill="#EA4335"/></svg>Google로 시작하기</div>
+                </div>
+                <p style="font-size:11px;color:#9ca3af;">로그인 시 <u>이용약관</u> 및 <u>개인정보처리방침</u>에 동의</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-9">
+          <div class="annotation-num">9</div>
+          <div class="annotation-body">
+            <div class="annotation-title">터치 타겟 44px+</div>
+            <div class="annotation-desc">모바일 버튼 <code>py-3.5</code> (약 44px). WCAG 2.5.5 최소 44×44px 충족.</div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-10">
+          <div class="annotation-num">10</div>
+          <div class="annotation-body">
+            <div class="annotation-title">반응형 자연 대응</div>
+            <div class="annotation-desc"><code>max-w-sm</code> + <code>px-4</code> 기반. 별도 미디어 쿼리 불필요.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 03. API Spec ═══ -->
+  <div class="doc-section" id="api-section">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <div class="section-title">API Endpoints</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Path</th><th>설명</th><th>응답</th></tr></thead>
+        <tbody>
+          <tr><td><span class="api-method get">GET</span></td><td><span class="api-path">/api/auth/{provider}</span></td><td>소셜 로그인 시작</td><td style="color:var(--text-muted)">302 → OAuth 페이지</td></tr>
+          <tr><td><span class="api-method get">GET</span></td><td><span class="api-path">/api/auth/{provider}/callback</span></td><td>OAuth 콜백</td><td style="color:var(--text-muted)">302 → / 또는 /login?error=</td></tr>
+          <tr><td><span class="api-method post">POST</span></td><td><span class="api-path">/api/auth/logout</span></td><td>로그아웃</td><td style="color:var(--text-muted)">200 { ok: true }</td></tr>
+          <tr><td><span class="api-method get">GET</span></td><td><span class="api-path">/api/auth/me</span></td><td>현재 사용자 조회</td><td style="color:var(--text-muted)">200 user / 401</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 04. Edge Cases ═══ -->
+  <div class="doc-section" id="edge-section">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <div class="section-title">Edge Cases &amp; Policy</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div class="edge-item"><span class="edge-code">E1</span><div class="edge-text"><strong>이미 로그인된 상태에서 /login 접근</strong> → <code>/</code>로 리다이렉트</div></div>
+      <div class="edge-item"><span class="edge-code">E2</span><div class="edge-text"><strong>JWT 만료</strong> → <code>GET /me</code> 401 → 세션 쿠키 삭제 → 로그인 페이지로</div></div>
+      <div class="edge-item"><span class="edge-code">E3</span><div class="edge-text"><strong>OAuth 제공자 거부 (사용자 취소)</strong> → <code>/login?error=auth_failed</code></div></div>
+      <div class="edge-item"><span class="edge-code">E4</span><div class="edge-text"><strong>지원하지 않는 provider</strong> → <code>/login?error=auth_failed</code></div></div>
+      <div class="edge-item"><span class="edge-code">E5</span><div class="edge-text"><strong>동일 이메일 다른 제공자</strong> → 별도 계정 (추후 연동 고려)</div></div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 05. Status ═══ -->
+  <div class="doc-section" style="padding-bottom: 80px;">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <div class="section-title">Implementation Status</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px;">
+      <div class="status-item status-done"><span class="status-icon" style="width:18px;text-align:center;">✓</span> 로그인 페이지 UI (소셜 버튼 3종)</div>
+      <div class="status-item status-done"><span class="status-icon" style="width:18px;text-align:center;">✓</span> OAuth 라우트 (GET /:provider, callback, logout, me)</div>
+      <div class="status-item status-done"><span class="status-icon" style="width:18px;text-align:center;">✓</span> JWT 발급/검증 (Hono JWT HS256)</div>
+      <div class="status-item status-done"><span class="status-icon" style="width:18px;text-align:center;">✓</span> 에러 메시지 표시</div>
+      <div class="status-item status-done"><span class="status-icon" style="width:18px;text-align:center;">✓</span> 로그인 후 홈 리다이렉트 &amp; 네비게이션 바</div>
+      <div class="status-item status-done"><span class="status-icon" style="width:18px;text-align:center;">✓</span> 이미 로그인 시 /login → / 리다이렉트</div>
+      <div class="status-item status-todo"><span class="status-icon" style="width:18px;text-align:center;">○</span> JWT 만료 시 자동 로그아웃 처리</div>
+    </div>
+  </div>
+
+  <script>
+    function highlightNote(num) {
+          document.querySelectorAll('.annotation-item.highlight').forEach(el => el.classList.remove('highlight'));
+          document.querySelectorAll('.callout-marker.active').forEach(el => el.classList.remove('active'));
+          const note = document.getElementById('note-' + num);
+          const marker = document.querySelector('.callout-marker[data-note="' + num + '"]');
+          if (note) { note.classList.add('highlight'); note.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+          if (marker) marker.classList.add('active');
+          setTimeout(() => { if (note) note.classList.remove('highlight'); if (marker) marker.classList.remove('active'); }, 3000);
+        }
+    
+        function toggleAnnotations() {
+          const body = document.getElementById('doc-body');
+          const btn = document.getElementById('btn-annotations');
+          body.classList.toggle('annotations-hidden');
+          btn.classList.toggle('active');
+        }
+    
+        function scrollTo(id) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          el.classList.add('flash-highlight');
+          setTimeout(() => el.classList.remove('flash-highlight'), 1500);
+        }
+  </script>
+
+</body>
+</html>

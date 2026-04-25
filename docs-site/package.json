@@ -1,0 +1,25 @@
+{
+  "name": "meet2meet-docs",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "sync:planning": "node ./scripts/sync-planning-docs.mjs",
+    "prepare:docs": "pnpm run sync:planning",
+    "dev": "pnpm run prepare:docs && astro dev --host 0.0.0.0 --port 3001",
+    "start": "pnpm run dev",
+    "build": "pnpm run prepare:docs && astro build",
+    "preview": "astro preview --host 0.0.0.0 --port 3001",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.38.4",
+    "@scalar/api-reference": "^1.35.7",
+    "astro": "^6.0.0",
+    "sharp": "^0.34.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0"
+  },
+  "packageManager": "pnpm@10.30.3"
+}

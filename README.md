@@ -44,3 +44,22 @@ SSR is enabled by default. You can [disable it](https://vike.dev/ssr) for all or
 
 You can [enable/disable HTML streaming](https://vike.dev/stream) for all or specific pages.
 
+## Documentation Portal (Docusaurus + Swagger)
+
+기획 문서와 OpenAPI 문서를 통합해서 보려면 아래를 실행합니다.
+
+```sh
+cd docs-site
+pnpm install
+pnpm start
+```
+
+또는 루트에서:
+
+```sh
+pnpm docs:dev
+```
+
+- 문서 서버: `http://localhost:3001`
+- OpenAPI 소스: `docs/MEETING_API_SPEC.yaml`
+- 기획 문서/와이어프레임은 실행 시 자동 동기화됩니다.

@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet2Meet — Meeting Creation Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas: #1a1a2e;
+      --surface: #16213e;
+      --accent: #e94560;
+      --accent-soft: rgba(233,69,96,0.15);
+      --text: #eee;
+      --text-dim: #8892a4;
+      --text-muted: #5a6377;
+      --border: #2a3a5c;
+      --wire-bg: #f8f9fb;
+      --wire-border: #e2e5ea;
+      --wire-text: #1a1a1a;
+      --wire-dim: #6b7280;
+      --green: #34d399;
+      --blue: #60a5fa;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --purple: #a78bfa;
+      --orange: #fb923c;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--canvas);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(26,26,46,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 16px; }
+    .toolbar-title { font-size: 14px; font-weight: 600; }
+    .toolbar-breadcrumb { font-size: 12px; color: var(--text-dim); }
+    .toolbar-actions { display: flex; gap: 8px; }
+    .toolbar-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text-dim); font-size: 12px; padding: 6px 14px;
+      border-radius: 6px; cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .toolbar-btn:hover { color: var(--text); border-color: var(--text-dim); }
+    .toolbar-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Section ── */
+    .doc-section { max-width: 1280px; margin: 0 auto; padding: 48px 32px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .section-number {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .section-title { font-size: 18px; font-weight: 700; }
+    .section-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    /* ── Flow ── */
+    .flow-container { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 24px 0; }
+    .flow-node {
+      padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500;
+      white-space: nowrap; text-align: center; flex-shrink: 0;
+    }
+    .flow-node .flow-sub { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+    .flow-arrow { color: var(--text-muted); font-size: 18px; padding: 0 6px; flex-shrink: 0; }
+
+    /* ── Screen Card ── */
+    .screen-row {
+      display: grid; grid-template-columns: auto 1fr; gap: 0;
+      margin-bottom: 48px; background: var(--surface);
+      border-radius: 16px; border: 1px solid var(--border); overflow: hidden;
+    }
+    .screen-row.reverse { grid-template-columns: 1fr auto; }
+    .screen-row.reverse .screen-wireframe { order: 2; }
+    .screen-row.reverse .annotation-panel { order: 1; border-right: 1px solid var(--border); border-left: none; }
+
+    .screen-wireframe {
+      padding: 32px; display: flex; flex-direction: column;
+      align-items: center; gap: 16px; position: relative;
+    }
+    .screen-tag {
+      align-self: flex-start; font-size: 11px; font-weight: 600;
+      color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* ── Device Frame ── */
+    .device-frame {
+      background: var(--wire-bg); border-radius: 16px; border: 2px solid var(--wire-border);
+      overflow: hidden; width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); position: relative;
+    }
+    .device-frame.wide { width: 520px; }
+    .device-frame.narrow { width: 360px; }
+    .device-chrome {
+      background: #fff; border-bottom: 1px solid var(--wire-border);
+      padding: 8px 12px; display: flex; align-items: center; gap: 6px;
+    }
+    .chrome-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wire-border); }
+    .chrome-url {
+      flex: 1; background: #f3f4f6; border-radius: 4px; padding: 3px 8px;
+      font-size: 10px; color: var(--wire-dim); font-family: monospace;
+    }
+    .device-body { padding: 0; position: relative; }
+
+    .wire-content { padding: 24px; color: var(--wire-text); position: relative; }
+
+    /* ── Callout Markers ── */
+    .callout-marker {
+      position: absolute; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 0 0 3px rgba(233,69,96,0.3);
+    }
+    .callout-marker:hover { transform: scale(1.2); box-shadow: 0 0 0 5px rgba(233,69,96,0.4); }
+    .callout-marker.active { box-shadow: 0 0 0 5px rgba(233,69,96,0.6); }
+
+    /* ── Annotation Panel ── */
+    .annotation-panel {
+      border-left: 1px solid var(--border); padding: 24px; width: 360px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .annotation-panel-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-muted);
+      margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .annotation-item {
+      display: flex; gap: 12px; padding: 12px 8px;
+      border-bottom: 1px solid rgba(42,58,92,0.5);
+      cursor: pointer; transition: background 0.15s; border-radius: 6px;
+    }
+    .annotation-item:last-child { border-bottom: none; }
+    .annotation-item:hover { background: rgba(233,69,96,0.08); }
+    .annotation-item.highlight { background: var(--accent-soft); }
+    .annotation-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    .annotation-body { flex: 1; min-width: 0; }
+    .annotation-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .annotation-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+    .annotation-desc code {
+      background: rgba(96,165,250,0.15); color: var(--blue);
+      padding: 1px 5px; border-radius: 3px; font-size: 11px;
+    }
+    .annotation-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; color: var(--accent); margin-top: 6px;
+      text-decoration: none; opacity: 0.8;
+    }
+    .annotation-link:hover { opacity: 1; text-decoration: underline; }
+
+    /* ── Wire UI Components ── */
+    .wire-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--wire-border);
+    }
+    .wire-nav-logo { font-size: 16px; font-weight: 700; color: var(--wire-text); }
+    .wire-avatar {
+      width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: #6b7280;
+    }
+    .wire-input {
+      width: 100%; border: 1px solid var(--wire-border); border-radius: 8px;
+      padding: 10px 14px; font-size: 14px; font-family: inherit;
+      color: var(--wire-text); background: #fff; outline: none;
+    }
+    .wire-input::placeholder { color: #9ca3af; }
+    .wire-input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.12); }
+    .wire-textarea {
+      width: 100%; border: 1px solid var(--wire-border); border-radius: 8px;
+      padding: 10px 14px; font-size: 13px; font-family: inherit;
+      color: var(--wire-text); background: #fff; resize: vertical;
+      min-height: 64px; outline: none;
+    }
+    .wire-textarea::placeholder { color: #9ca3af; }
+    .wire-label {
+      font-size: 13px; font-weight: 600; color: var(--wire-text);
+      margin-bottom: 6px; display: block;
+    }
+    .wire-label-optional { font-weight: 400; color: #9ca3af; font-size: 12px; margin-left: 4px; }
+    .wire-btn-primary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 12px; border-radius: 10px; font-size: 14px;
+      font-weight: 600; border: none; cursor: default;
+      background: var(--wire-text); color: #fff;
+    }
+    .wire-btn-primary.disabled { opacity: 0.4; }
+    .wire-btn-secondary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 10px; border-radius: 8px; font-size: 13px;
+      font-weight: 500; border: 1px solid var(--wire-border); cursor: default;
+      background: #fff; color: var(--wire-text);
+    }
+    .wire-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+    .wire-section-divider {
+      border: none; border-top: 1px solid var(--wire-border);
+      margin: 20px 0;
+    }
+
+    /* ── Calendar Mini ── */
+    .wire-calendar {
+      border: 1px solid var(--wire-border); border-radius: 10px;
+      overflow: hidden; background: #fff;
+    }
+    .wire-cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; font-size: 14px; font-weight: 600;
+      color: var(--wire-text);
+    }
+    .wire-cal-arrow {
+      width: 28px; height: 28px; border-radius: 6px; border: none;
+      background: transparent; color: var(--wire-dim); cursor: default;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .wire-cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 2px; padding: 4px 8px 8px;
+    }
+    .wire-cal-day {
+      font-size: 10px; font-weight: 600; color: #9ca3af;
+      text-align: center; padding: 4px 0;
+    }
+    .wire-cal-cell {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; border-radius: 6px; color: var(--wire-text);
+    }
+    .wire-cal-cell.disabled { color: #d1d5db; }
+    .wire-cal-cell.selected { background: var(--wire-text); color: #fff; font-weight: 600; }
+    .wire-cal-cell.preview { background: rgba(0,0,0,0.08); }
+    .wire-cal-cell.today { font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--wire-text); }
+
+    /* ── TimeGrid Mini ── */
+    .wire-timegrid {
+      border: 1px solid var(--wire-border); border-radius: 10px;
+      overflow: hidden; background: #fff;
+    }
+    .wire-tg-header {
+      display: grid; grid-template-columns: 48px repeat(var(--cols, 3), 1fr);
+      gap: 1px; padding: 8px 8px 4px; font-size: 10px; font-weight: 600;
+      color: var(--wire-dim); text-align: center;
+    }
+    .wire-tg-body {
+      display: grid; grid-template-columns: 48px repeat(var(--cols, 3), 1fr);
+      gap: 1px; padding: 0 8px 8px;
+    }
+    .wire-tg-time {
+      font-size: 10px; color: #9ca3af; display: flex;
+      align-items: center; justify-content: flex-end; padding-right: 6px;
+    }
+    .wire-tg-slot {
+      aspect-ratio: 3/1; border-radius: 3px; background: #f3f4f6;
+      min-height: 16px;
+    }
+    .wire-tg-slot.selected { background: rgba(99,102,241,0.6); }
+    .wire-tg-slot.preview { background: rgba(99,102,241,0.25); }
+
+    /* ── Share Box ── */
+    .wire-share-box {
+      border: 1px solid var(--wire-border); border-radius: 10px;
+      padding: 16px; background: #fff;
+    }
+    .wire-share-url {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .wire-share-url-text {
+      flex: 1; background: #f3f4f6; border-radius: 6px; padding: 8px 12px;
+      font-size: 12px; font-family: monospace; color: var(--wire-dim);
+      border: 1px solid var(--wire-border); overflow: hidden;
+      white-space: nowrap; text-overflow: ellipsis;
+    }
+    .wire-share-copy {
+      padding: 8px 14px; border-radius: 6px; font-size: 12px;
+      font-weight: 600; background: var(--wire-text); color: #fff;
+      border: none; cursor: default; white-space: nowrap;
+    }
+    .wire-invite-code {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; margin-top: 12px; padding: 10px;
+      background: #f9fafb; border-radius: 8px;
+    }
+    .wire-invite-code-label { font-size: 12px; color: var(--wire-dim); }
+    .wire-invite-code-value {
+      font-size: 16px; font-weight: 700; color: var(--wire-text);
+      letter-spacing: 2px; font-family: monospace;
+    }
+
+    /* ── Data Model ── */
+    .model-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .model-table th {
+      text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-muted); padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .model-table td { padding: 10px 16px; border-bottom: 1px solid rgba(42,58,92,0.4); color: var(--text-dim); }
+    .model-table tr:last-child td { border-bottom: none; }
+    .model-field { font-family: monospace; font-size: 12px; color: var(--text); }
+    .model-type { font-family: monospace; font-size: 11px; color: var(--purple); }
+    .model-required { font-size: 10px; font-weight: 600; color: var(--red); }
+    .model-optional { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+
+    /* ── API Table ── */
+    .api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .api-table th {
+      text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-muted); padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .api-table td { padding: 12px 16px; border-bottom: 1px solid rgba(42,58,92,0.4); color: var(--text-dim); }
+    .api-table tr:last-child td { border-bottom: none; }
+    .api-method { font-family: monospace; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+    .api-method.get { background: rgba(52,211,153,0.15); color: var(--green); }
+    .api-method.post { background: rgba(251,191,36,0.15); color: var(--yellow); }
+    .api-path { font-family: monospace; font-size: 12px; color: var(--text); }
+
+    /* ── Edge Cases ── */
+    .edge-item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(42,58,92,0.4); }
+    .edge-item:last-child { border-bottom: none; }
+    .edge-code {
+      font-family: monospace; font-size: 11px; font-weight: 600;
+      background: rgba(96,165,250,0.1); color: var(--blue);
+      padding: 2px 8px; border-radius: 4px; height: fit-content; flex-shrink: 0;
+    }
+    .edge-text { font-size: 13px; color: var(--text-dim); }
+    .edge-text strong { color: var(--text); font-weight: 600; }
+    .edge-text code { background: rgba(96,165,250,0.12); color: var(--blue); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+    /* ── Status ── */
+    .status-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; }
+    .status-done { color: var(--green); }
+    .status-todo { color: var(--text-muted); }
+
+    /* ── Toggle ── */
+    .annotations-hidden .callout-marker { display: none !important; }
+    .annotations-hidden .annotation-panel { display: none !important; }
+    .annotations-hidden .screen-row,
+    .annotations-hidden .screen-row.reverse { grid-template-columns: 1fr; }
+
+    /* ── Info Blocks ── */
+    .info-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .info-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 20px;
+    }
+    .info-card-label {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+    .info-card-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .info-card-desc { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .screen-row, .screen-row.reverse { grid-template-columns: 1fr; }
+      .screen-row.reverse .screen-wireframe { order: 1; }
+      .screen-row.reverse .annotation-panel { order: 2; border-left: none; border-right: none; border-top: 1px solid var(--border); }
+      .annotation-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+      .device-frame, .device-frame.wide, .device-frame.narrow { width: 100%; max-width: 420px; }
+    }
+
+    .flash-highlight { animation: flash 1.5s ease; }
+    @keyframes flash {
+      0% { box-shadow: 0 0 0 0 rgba(233,69,96,0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(233,69,96,0.15); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+  </style>
+</head>
+<body id="doc-body">
+
+  <!-- ═══ Toolbar ═══ -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-title">Meet2Meet</div>
+      <div class="toolbar-breadcrumb">Features / Meeting / New — Wireframe</div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="toolbar-btn active" id="btn-annotations" onclick="toggleAnnotations()">Annotations</button>
+      <button class="toolbar-btn" onclick="scrollTo('data-section')">Data Model</button>
+      <button class="toolbar-btn" onclick="scrollTo('api-section')">API Spec</button>
+      <button class="toolbar-btn" onclick="scrollTo('edge-section')">Edge Cases</button>
+    </div>
+  </div>
+
+  <!-- ═══ 00. Feature Brief ═══ -->
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">0</div>
+      <div class="section-title">Feature Brief</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-label">Route</div>
+        <div class="info-card-value" style="font-family:monospace;">/meeting/new</div>
+        <div class="info-card-desc">인증 필수 (미로그인 → /login 리다이렉트)</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Layout</div>
+        <div class="info-card-value">싱글 페이지</div>
+        <div class="info-card-desc">스크롤 한 페이지에서 모든 입력 완료</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">참고 서비스</div>
+        <div class="info-card-value">When2meet</div>
+        <div class="info-card-desc">날짜 선택 → 시간 범위 설정 → 공유</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">시간 범위</div>
+        <div class="info-card-value">00:00 ~ 24:00</div>
+        <div class="info-card-desc">30분 단위, 48 슬롯/일</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">공유 방식</div>
+        <div class="info-card-value">링크 + 초대 코드</div>
+        <div class="info-card-desc">생성 완료 후 복사 가능</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">기존 컴포넌트</div>
+        <div class="info-card-value">Calendar, TimeGrid</div>
+        <div class="info-card-desc">date-picker, time-picker 위젯 재사용</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 01. User Flow ═══ -->
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <div class="section-title">User Flow</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; overflow-x: auto;">
+      <div class="flow-container">
+        <div class="flow-node" style="background: rgba(96,165,250,0.12); color: var(--blue);">/ (홈)<div class="flow-sub">"새 미팅 만들기" 클릭</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(168,85,247,0.12); color: var(--purple);">/meeting/new<div class="flow-sub">미팅 정보 입력</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.12); color: var(--green);">POST /api/meetings<div class="flow-sub">미팅 생성 요청</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(251,191,36,0.12); color: var(--yellow);">성공 모달<div class="flow-sub">링크 + 초대 코드</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.2); color: var(--green); border: 1px solid rgba(52,211,153,0.3);">/meeting/{id}<div class="flow-sub">미팅 상세</div></div>
+      </div>
+      <div style="margin-top: 8px; text-align: right;"><span style="font-size: 11px; color: var(--red);">⚠ 실패 시 → 에러 토스트 (페이지 유지, 입력값 보존)</span></div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 02. Screens ═══ -->
+  <div class="doc-section">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <div class="section-title">Screen Design</div>
+    </div>
+
+    <!-- ── Screen 01: Full Page ── -->
+    <div class="screen-row">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 01 — Meeting Creation (Default)</div>
+        <div class="device-frame wide">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/meeting/new</div>
+          </div>
+          <div class="device-body">
+            <!-- NavBar -->
+            <div class="wire-nav">
+              <div class="wire-nav-logo">Meet2Meet</div>
+              <div class="wire-avatar">홍</div>
+            </div>
+
+            <div class="wire-content" style="padding: 24px;">
+              <!-- Page Header -->
+              <span class="callout-marker" style="top:62px;right:12px" data-note="1" onclick="highlightNote(1)">1</span>
+              <h1 style="font-size:20px;font-weight:700;color:var(--wire-text);margin-bottom:4px;">새 미팅 만들기</h1>
+              <p style="font-size:13px;color:var(--wire-dim);margin-bottom:24px;">모임 정보를 입력하고, 후보 날짜와 시간을 선택하세요.</p>
+
+              <!-- Section: 기본 정보 -->
+              <span class="callout-marker" style="top:138px;left:8px" data-note="2" onclick="highlightNote(2)">2</span>
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">미팅 제목 <span style="color:var(--red);font-size:11px;">*</span></label>
+                <input class="wire-input" type="text" placeholder="예: 4월 팀 회식" readonly>
+              </div>
+
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">설명 <span class="wire-label-optional">(선택)</span></label>
+                <textarea class="wire-textarea" placeholder="간단한 설명을 입력하세요" readonly></textarea>
+              </div>
+
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">장소 <span class="wire-label-optional">(선택)</span></label>
+                <input class="wire-input" type="text" placeholder="예: 강남역 근처" readonly>
+              </div>
+
+              <hr class="wire-section-divider">
+
+              <!-- Section: 날짜 선택 -->
+              <span class="callout-marker" style="top:370px;right:12px" data-note="3" onclick="highlightNote(3)">3</span>
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">후보 날짜 선택 <span style="color:var(--red);font-size:11px;">*</span></label>
+                <p class="wire-hint" style="margin-bottom:8px;">클릭 또는 드래그로 여러 날짜를 선택하세요. Shift+클릭으로 범위 선택.</p>
+                <div class="wire-calendar">
+                  <div class="wire-cal-header">
+                    <span class="wire-cal-arrow">‹</span>
+                    <span>2026년 4월</span>
+                    <span class="wire-cal-arrow">›</span>
+                  </div>
+                  <div class="wire-cal-grid">
+                    <div class="wire-cal-day">일</div><div class="wire-cal-day">월</div><div class="wire-cal-day">화</div><div class="wire-cal-day">수</div><div class="wire-cal-day">목</div><div class="wire-cal-day">금</div><div class="wire-cal-day">토</div>
+                    <!-- row 1 -->
+                    <div class="wire-cal-cell disabled"></div><div class="wire-cal-cell disabled"></div><div class="wire-cal-cell disabled"></div><div class="wire-cal-cell disabled">1</div><div class="wire-cal-cell disabled">2</div><div class="wire-cal-cell disabled">3</div><div class="wire-cal-cell disabled">4</div>
+                    <!-- row 2 -->
+                    <div class="wire-cal-cell disabled">5</div><div class="wire-cal-cell disabled">6</div><div class="wire-cal-cell disabled">7</div><div class="wire-cal-cell disabled">8</div><div class="wire-cal-cell disabled">9</div><div class="wire-cal-cell disabled">10</div><div class="wire-cal-cell disabled">11</div>
+                    <!-- row 3 -->
+                    <div class="wire-cal-cell disabled">12</div><div class="wire-cal-cell disabled">13</div><div class="wire-cal-cell disabled">14</div><div class="wire-cal-cell disabled">15</div><div class="wire-cal-cell disabled">16</div><div class="wire-cal-cell disabled">17</div><div class="wire-cal-cell today">18</div>
+                    <!-- row 4 -->
+                    <div class="wire-cal-cell">19</div><div class="wire-cal-cell selected">20</div><div class="wire-cal-cell selected">21</div><div class="wire-cal-cell selected">22</div><div class="wire-cal-cell">23</div><div class="wire-cal-cell selected">24</div><div class="wire-cal-cell selected">25</div>
+                    <!-- row 5 -->
+                    <div class="wire-cal-cell">26</div><div class="wire-cal-cell">27</div><div class="wire-cal-cell">28</div><div class="wire-cal-cell">29</div><div class="wire-cal-cell">30</div><div class="wire-cal-cell"></div><div class="wire-cal-cell"></div>
+                  </div>
+                </div>
+                <p class="wire-hint" style="margin-top:6px;">선택: 4/20(월), 4/21(화), 4/22(수), 4/24(금), 4/25(토) — <strong>5일</strong></p>
+              </div>
+
+              <hr class="wire-section-divider">
+
+              <!-- Section: 시간 범위 -->
+              <span class="callout-marker" style="top:710px;left:8px" data-note="4" onclick="highlightNote(4)">4</span>
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">시간 범위 설정 <span style="color:var(--red);font-size:11px;">*</span></label>
+                <p class="wire-hint" style="margin-bottom:8px;">참여자가 선택할 수 있는 시간 범위를 지정하세요.</p>
+                <div style="display:flex;gap:12px;align-items:center;">
+                  <div style="flex:1;">
+                    <select class="wire-input" style="padding:8px 12px;font-size:13px;" disabled>
+                      <option>09:00</option>
+                    </select>
+                  </div>
+                  <span style="color:var(--wire-dim);font-size:13px;font-weight:500;">~</span>
+                  <div style="flex:1;">
+                    <select class="wire-input" style="padding:8px 12px;font-size:13px;" disabled>
+                      <option>22:00</option>
+                    </select>
+                  </div>
+                </div>
+                <p class="wire-hint" style="margin-top:4px;">기본: 00:00 ~ 24:00 (30분 단위, 48 슬롯/일)</p>
+              </div>
+
+              <!-- Section: TimeGrid Preview -->
+              <span class="callout-marker" style="top:850px;right:12px" data-note="5" onclick="highlightNote(5)">5</span>
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">시간표 미리보기</label>
+                <p class="wire-hint" style="margin-bottom:8px;">생성 후 참여자들이 응답할 시간표입니다.</p>
+                <div class="wire-timegrid" style="--cols:5;">
+                  <div class="wire-tg-header">
+                    <div></div>
+                    <div>4/20<br><span style="font-size:9px;opacity:.5">월</span></div>
+                    <div>4/21<br><span style="font-size:9px;opacity:.5">화</span></div>
+                    <div>4/22<br><span style="font-size:9px;opacity:.5">수</span></div>
+                    <div>4/24<br><span style="font-size:9px;opacity:.5">금</span></div>
+                    <div>4/25<br><span style="font-size:9px;opacity:.5">토</span></div>
+                  </div>
+                  <div class="wire-tg-body" style="--cols:5;">
+                    <div class="wire-tg-time">09:00</div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div>
+                    <div class="wire-tg-time">09:30</div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div>
+                    <div class="wire-tg-time">10:00</div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div>
+                    <div class="wire-tg-time">10:30</div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div>
+                    <div class="wire-tg-time">11:00</div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div><div class="wire-tg-slot"></div>
+                    <div class="wire-tg-time" style="font-size:9px;color:#d1d5db;">⋮</div><div class="wire-tg-slot" style="background:transparent;border:1px dashed #e5e7eb;"></div><div class="wire-tg-slot" style="background:transparent;border:1px dashed #e5e7eb;"></div><div class="wire-tg-slot" style="background:transparent;border:1px dashed #e5e7eb;"></div><div class="wire-tg-slot" style="background:transparent;border:1px dashed #e5e7eb;"></div><div class="wire-tg-slot" style="background:transparent;border:1px dashed #e5e7eb;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <hr class="wire-section-divider">
+
+              <!-- Submit Button -->
+              <span class="callout-marker" style="bottom:32px;right:12px" data-note="6" onclick="highlightNote(6)">6</span>
+              <div class="wire-btn-primary" style="margin-top:8px;">미팅 만들기</div>
+              <p class="wire-hint" style="text-align:center;margin-top:8px;">제목과 날짜를 입력해야 활성화됩니다</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-1">
+          <div class="annotation-num">1</div>
+          <div class="annotation-body">
+            <div class="annotation-title">인증 가드</div>
+            <div class="annotation-desc"><code>useAuth()</code>로 인증 확인. 비로그인 시 <code>/login</code>으로 리다이렉트. 로딩 중엔 스켈레톤 표시.</div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-2">
+          <div class="annotation-num">2</div>
+          <div class="annotation-body">
+            <div class="annotation-title">폼 필드 구성</div>
+            <div class="annotation-desc">
+              • <strong>제목</strong>: 필수, 최대 50자<br>
+              • <strong>설명</strong>: 선택, 최대 200자<br>
+              • <strong>장소</strong>: 선택, 자유 텍스트<br>
+              모든 필드는 클라이언트 + 서버 양측 검증
+            </div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-3">
+          <div class="annotation-num">3</div>
+          <div class="annotation-body">
+            <div class="annotation-title">Calendar 위젯</div>
+            <div class="annotation-desc">
+              기존 <code>Calendar</code> 컴포넌트 재사용.<br>
+              • <code>minDate</code> = 오늘<br>
+              • <code>maxDate</code> = 오늘 + 30일<br>
+              • 드래그 + Shift+클릭 범위 선택<br>
+              • 선택된 날짜 요약 텍스트 하단 표시
+            </div>
+            <a class="annotation-link" href="#edge-section" onclick="scrollTo('edge-section')">→ Edge Case E2</a>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-4">
+          <div class="annotation-num">4</div>
+          <div class="annotation-body">
+            <div class="annotation-title">시간 범위 설정</div>
+            <div class="annotation-desc">
+              시작/끝 시간 <code>&lt;select&gt;</code> 드롭다운.<br>
+              • 기본값: 00:00 ~ 24:00<br>
+              • 30분 간격 옵션 (00:00 ~ 23:30)<br>
+              • 끝 시간 &gt; 시작 시간 검증<br>
+              • <code>generateTimeSlots(start, end, 30)</code> 활용
+            </div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-5">
+          <div class="annotation-num">5</div>
+          <div class="annotation-body">
+            <div class="annotation-title">TimeGrid 미리보기</div>
+            <div class="annotation-desc">
+              날짜 + 시간 범위가 설정되면 자동으로 <code>TimeGrid</code> 미리보기 표시. 사용자에게 "참여자에게 이렇게 보입니다" 확인 목적.<br>
+              <strong>읽기 전용</strong> — 주최자는 시간 선택 없음. 이 그리드가 참여자용.
+            </div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-6">
+          <div class="annotation-num">6</div>
+          <div class="annotation-body">
+            <div class="annotation-title">제출 버튼 & 유효성</div>
+            <div class="annotation-desc">
+              활성화 조건: 제목 입력 + 날짜 1개+ 선택<br>
+              비활성 시 <code>opacity-40</code> + <code>pointer-events-none</code><br>
+              제출 중: 로딩 스피너 + 버튼 비활성화<br>
+              <code>POST /api/meetings</code> → 성공 시 공유 모달
+            </div>
+            <a class="annotation-link" href="#api-section" onclick="scrollTo('api-section')">→ API Spec</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen 02: Success Modal ── -->
+    <div class="screen-row reverse">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 02 — Creation Success (Share Modal)</div>
+        <div class="device-frame">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/meeting/new</div>
+          </div>
+          <div class="device-body">
+            <!-- Dimmed Background -->
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:1;"></div>
+            <!-- Modal -->
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;padding:24px;">
+              <div style="background:#fff;border-radius:16px;padding:28px 24px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+                <span class="callout-marker" style="top:80px;right:32px" data-note="7" onclick="highlightNote(7)">7</span>
+                <span class="callout-marker" style="top:200px;left:32px" data-note="8" onclick="highlightNote(8)">8</span>
+                <span class="callout-marker" style="bottom:100px;right:32px" data-note="9" onclick="highlightNote(9)">9</span>
+
+                <!-- Success Icon -->
+                <div style="text-align:center;margin-bottom:16px;">
+                  <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#ecfdf5;">
+                    <span style="font-size:24px;">✓</span>
+                  </div>
+                </div>
+                <h2 style="font-size:18px;font-weight:700;color:var(--wire-text);text-align:center;margin-bottom:4px;">미팅이 생성되었습니다!</h2>
+                <p style="font-size:13px;color:var(--wire-dim);text-align:center;margin-bottom:20px;">참여자에게 아래 링크나 초대 코드를 공유하세요.</p>
+
+                <!-- Share Link -->
+                <div class="wire-share-box" style="margin-bottom:12px;">
+                  <div style="font-size:12px;font-weight:600;color:var(--wire-text);margin-bottom:8px;">공유 링크</div>
+                  <div class="wire-share-url">
+                    <div class="wire-share-url-text">meet2meet.app/m/abc1234</div>
+                    <div class="wire-share-copy">복사</div>
+                  </div>
+
+                  <div style="font-size:12px;font-weight:600;color:var(--wire-text);margin-top:14px;margin-bottom:6px;">초대 코드</div>
+                  <div class="wire-invite-code">
+                    <div class="wire-invite-code-value">ABC-1234</div>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+                  <div class="wire-btn-primary" style="font-size:13px;padding:10px;">미팅 페이지로 이동</div>
+                  <div class="wire-btn-secondary">홈으로 돌아가기</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-7">
+          <div class="annotation-num">7</div>
+          <div class="annotation-body">
+            <div class="annotation-title">성공 모달</div>
+            <div class="annotation-desc">
+              <code>POST /api/meetings</code> 201 응답 시 모달 표시.<br>
+              백드롭 클릭으로 닫히지 않음 (명시적 액션 필요).<br>
+              ESC 키로 닫을 수 있음.
+            </div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-8">
+          <div class="annotation-num">8</div>
+          <div class="annotation-body">
+            <div class="annotation-title">공유 링크 + 초대 코드</div>
+            <div class="annotation-desc">
+              • <strong>링크</strong>: <code>/m/{shortId}</code> 형태, 복사 버튼 클릭 시 클립보드 복사 + 토스트 "복사되었습니다"<br>
+              • <strong>초대 코드</strong>: 영문+숫자 8자리 (대시 포함). 참여자가 코드 입력으로 접근 가능.<br>
+              서버에서 <code>shortId</code>와 <code>inviteCode</code> 모두 응답.
+            </div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-9">
+          <div class="annotation-num">9</div>
+          <div class="annotation-body">
+            <div class="annotation-title">후속 액션</div>
+            <div class="annotation-desc">
+              • <strong>미팅 페이지로 이동</strong>: <code>/meeting/{id}</code> — 주최자 시점 미팅 상세<br>
+              • <strong>홈으로 돌아가기</strong>: <code>/</code> — 미팅 목록
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen 03: Mobile ── -->
+    <div class="screen-row">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 03 — Mobile (375px)</div>
+        <div class="device-frame narrow">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/meeting/new</div>
+          </div>
+          <div class="device-body">
+            <div class="wire-nav">
+              <div class="wire-nav-logo">Meet2Meet</div>
+              <div class="wire-avatar">홍</div>
+            </div>
+
+            <div class="wire-content" style="padding:20px 16px;">
+              <span class="callout-marker" style="top:60px;right:6px" data-note="10" onclick="highlightNote(10)">10</span>
+              <span class="callout-marker" style="top:420px;left:6px" data-note="11" onclick="highlightNote(11)">11</span>
+
+              <h1 style="font-size:18px;font-weight:700;color:var(--wire-text);margin-bottom:4px;">새 미팅 만들기</h1>
+              <p style="font-size:12px;color:var(--wire-dim);margin-bottom:20px;">모임 정보를 입력하세요.</p>
+
+              <div style="margin-bottom:16px;">
+                <label class="wire-label" style="font-size:12px;">미팅 제목 *</label>
+                <input class="wire-input" type="text" placeholder="예: 4월 팀 회식" readonly style="font-size:13px;padding:10px 12px;">
+              </div>
+
+              <div style="margin-bottom:16px;">
+                <label class="wire-label" style="font-size:12px;">설명 <span class="wire-label-optional">(선택)</span></label>
+                <textarea class="wire-textarea" placeholder="간단한 설명" readonly style="font-size:12px;min-height:48px;padding:8px 12px;"></textarea>
+              </div>
+
+              <hr class="wire-section-divider" style="margin:16px 0;">
+
+              <label class="wire-label" style="font-size:12px;">후보 날짜 *</label>
+              <div class="wire-calendar" style="margin-bottom:12px;">
+                <div class="wire-cal-header" style="font-size:13px;padding:8px 12px;">
+                  <span class="wire-cal-arrow">‹</span>
+                  <span>2026년 4월</span>
+                  <span class="wire-cal-arrow">›</span>
+                </div>
+                <div class="wire-cal-grid" style="padding:2px 6px 6px;">
+                  <div class="wire-cal-day">일</div><div class="wire-cal-day">월</div><div class="wire-cal-day">화</div><div class="wire-cal-day">수</div><div class="wire-cal-day">목</div><div class="wire-cal-day">금</div><div class="wire-cal-day">토</div>
+                  <div class="wire-cal-cell disabled"></div><div class="wire-cal-cell disabled"></div><div class="wire-cal-cell disabled"></div><div class="wire-cal-cell disabled">1</div><div class="wire-cal-cell disabled">2</div><div class="wire-cal-cell disabled">3</div><div class="wire-cal-cell disabled">4</div>
+                  <div class="wire-cal-cell disabled">5</div><div class="wire-cal-cell disabled">6</div><div class="wire-cal-cell disabled">7</div><div class="wire-cal-cell disabled">8</div><div class="wire-cal-cell disabled">9</div><div class="wire-cal-cell disabled">10</div><div class="wire-cal-cell disabled">11</div>
+                  <div class="wire-cal-cell disabled">12</div><div class="wire-cal-cell disabled">13</div><div class="wire-cal-cell disabled">14</div><div class="wire-cal-cell disabled">15</div><div class="wire-cal-cell disabled">16</div><div class="wire-cal-cell disabled">17</div><div class="wire-cal-cell today">18</div>
+                  <div class="wire-cal-cell">19</div><div class="wire-cal-cell selected">20</div><div class="wire-cal-cell selected">21</div><div class="wire-cal-cell">22</div><div class="wire-cal-cell">23</div><div class="wire-cal-cell">24</div><div class="wire-cal-cell selected">25</div>
+                  <div class="wire-cal-cell">26</div><div class="wire-cal-cell">27</div><div class="wire-cal-cell">28</div><div class="wire-cal-cell">29</div><div class="wire-cal-cell">30</div><div class="wire-cal-cell"></div><div class="wire-cal-cell"></div>
+                </div>
+              </div>
+
+              <hr class="wire-section-divider" style="margin:16px 0;">
+
+              <label class="wire-label" style="font-size:12px;">시간 범위</label>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+                <select class="wire-input" style="flex:1;padding:8px;font-size:12px;" disabled><option>09:00</option></select>
+                <span style="color:var(--wire-dim);font-size:12px;">~</span>
+                <select class="wire-input" style="flex:1;padding:8px;font-size:12px;" disabled><option>22:00</option></select>
+              </div>
+
+              <div class="wire-btn-primary" style="font-size:13px;padding:14px;">미팅 만들기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-10">
+          <div class="annotation-num">10</div>
+          <div class="annotation-body">
+            <div class="annotation-title">모바일 레이아웃</div>
+            <div class="annotation-desc">
+              • 동일 싱글 페이지 구조, <code>max-w-lg px-4</code> 기반<br>
+              • 불필요한 설명 텍스트 축소<br>
+              • TimeGrid 미리보기는 모바일에서 가로 스크롤 또는 숨김 처리 가능<br>
+              • 버튼 <code>py-3.5</code> (44px+ 터치 타겟)
+            </div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-11">
+          <div class="annotation-num">11</div>
+          <div class="annotation-body">
+            <div class="annotation-title">터치 드래그 날짜 선택</div>
+            <div class="annotation-desc">
+              기존 Calendar 위젯의 터치 드래그 지원 활용.<br>
+              <code>touch-action: none</code> + <code>elementFromPoint()</code> 패턴으로 모바일에서 범위 선택 가능.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen 04: Validation States ── -->
+    <div class="screen-row reverse">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 04 — Validation & Error States</div>
+        <div class="device-frame">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/meeting/new</div>
+          </div>
+          <div class="device-body">
+            <div class="wire-nav">
+              <div class="wire-nav-logo">Meet2Meet</div>
+              <div class="wire-avatar">홍</div>
+            </div>
+
+            <div class="wire-content" style="padding:24px;">
+              <span class="callout-marker" style="top:100px;right:12px" data-note="12" onclick="highlightNote(12)">12</span>
+              <span class="callout-marker" style="top:240px;left:8px" data-note="13" onclick="highlightNote(13)">13</span>
+
+              <h1 style="font-size:20px;font-weight:700;color:var(--wire-text);margin-bottom:24px;">새 미팅 만들기</h1>
+
+              <!-- Error state: empty title -->
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">미팅 제목 <span style="color:var(--red);font-size:11px;">*</span></label>
+                <input class="wire-input" type="text" value="" placeholder="예: 4월 팀 회식" readonly style="border-color:#f87171;box-shadow:0 0 0 2px rgba(248,113,113,0.12);">
+                <p style="font-size:12px;color:#ef4444;margin-top:4px;">제목을 입력해주세요</p>
+              </div>
+
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">설명 <span class="wire-label-optional">(선택)</span></label>
+                <textarea class="wire-textarea" readonly style="min-height:48px;">오래된 텍스트가 들어가 있는 상태입니다. 이 텍스트는 200자 제한의 예시입니다.</textarea>
+                <p style="font-size:11px;color:#9ca3af;margin-top:4px;text-align:right;">42 / 200</p>
+              </div>
+
+              <hr class="wire-section-divider">
+
+              <!-- Error state: no dates selected -->
+              <div style="margin-bottom:20px;">
+                <label class="wire-label">후보 날짜 선택 <span style="color:var(--red);font-size:11px;">*</span></label>
+                <div style="border:1px solid #f87171;border-radius:10px;padding:24px;text-align:center;background:#fef2f2;">
+                  <p style="font-size:13px;color:#ef4444;">날짜를 1개 이상 선택해주세요</p>
+                </div>
+              </div>
+
+              <hr class="wire-section-divider">
+
+              <!-- Server error toast -->
+              <div style="position:relative;margin-bottom:20px;">
+                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:16px;">⚠</span>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;color:#dc2626;">미팅 생성 실패</div>
+                    <div style="font-size:12px;color:#ef4444;">서버 오류가 발생했습니다. 다시 시도해주세요.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wire-btn-primary disabled" style="margin-top:8px;">미팅 만들기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+        <div class="annotation-item" id="note-12">
+          <div class="annotation-num">12</div>
+          <div class="annotation-body">
+            <div class="annotation-title">클라이언트 유효성 검증</div>
+            <div class="annotation-desc">
+              제출 시점에 검증:<br>
+              • 제목 비어있음 → 빨간 테두리 + 메시지<br>
+              • 날짜 0개 → 달력 영역 에러 표시<br>
+              • 글자수 초과 → 실시간 카운터 빨간색<br>
+              첫 번째 에러 필드로 <code>scrollIntoView()</code>
+            </div>
+          </div>
+        </div>
+        <div class="annotation-item" id="note-13">
+          <div class="annotation-num">13</div>
+          <div class="annotation-body">
+            <div class="annotation-title">서버 에러 처리</div>
+            <div class="annotation-desc">
+              <code>POST /api/meetings</code> 실패 시:<br>
+              • 에러 배너를 폼 하단에 표시<br>
+              • 입력값은 보존 (초기화 X)<br>
+              • 에러 코드별 메시지 매핑<br>
+              • 네트워크 오류 시 "인터넷 연결을 확인해주세요"
+            </div>
+            <a class="annotation-link" href="#edge-section" onclick="scrollTo('edge-section')">→ Edge Cases</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 03. Data Model ═══ -->
+  <div class="doc-section" id="data-section">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <div class="section-title">Data Model</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;font-weight:600;color:var(--text);">CreateMeetingRequest</span>
+        <span style="font-size:11px;color:var(--text-dim);margin-left:8px;">(클라이언트 → 서버)</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">title</span></td><td><span class="model-type">string</span></td><td><span class="model-required">필수</span></td><td>미팅 제목 (1~50자)</td></tr>
+          <tr><td><span class="model-field">description</span></td><td><span class="model-type">string</span></td><td><span class="model-optional">선택</span></td><td>미팅 설명 (최대 200자)</td></tr>
+          <tr><td><span class="model-field">location</span></td><td><span class="model-type">string</span></td><td><span class="model-optional">선택</span></td><td>장소 (최대 100자)</td></tr>
+          <tr><td><span class="model-field">dates</span></td><td><span class="model-type">string[]</span></td><td><span class="model-required">필수</span></td><td>ISO 날짜 배열 <code>["2026-04-20", ...]</code> (1~14일)</td></tr>
+          <tr><td><span class="model-field">startTime</span></td><td><span class="model-type">string</span></td><td><span class="model-required">필수</span></td><td>"HH:mm" 형식 (예: "09:00")</td></tr>
+          <tr><td><span class="model-field">endTime</span></td><td><span class="model-type">string</span></td><td><span class="model-required">필수</span></td><td>"HH:mm" 형식 (예: "22:00"), startTime보다 커야 함</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;font-weight:600;color:var(--text);">CreateMeetingResponse</span>
+        <span style="font-size:11px;color:var(--text-dim);margin-left:8px;">(서버 → 클라이언트, 201)</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th></th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">id</span></td><td><span class="model-type">string</span></td><td></td><td>미팅 고유 ID (UUID)</td></tr>
+          <tr><td><span class="model-field">shortId</span></td><td><span class="model-type">string</span></td><td></td><td>공유용 짧은 ID (URL용)</td></tr>
+          <tr><td><span class="model-field">inviteCode</span></td><td><span class="model-type">string</span></td><td></td><td>초대 코드 (예: "ABC-1234")</td></tr>
+          <tr><td><span class="model-field">title</span></td><td><span class="model-type">string</span></td><td></td><td>미팅 제목</td></tr>
+          <tr><td><span class="model-field">dates</span></td><td><span class="model-type">string[]</span></td><td></td><td>확정된 후보 날짜들</td></tr>
+          <tr><td><span class="model-field">timeRange</span></td><td><span class="model-type">{ start, end }</span></td><td></td><td>시간 범위</td></tr>
+          <tr><td><span class="model-field">createdAt</span></td><td><span class="model-type">string</span></td><td></td><td>ISO 8601 생성 시각</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 04. API Spec ═══ -->
+  <div class="doc-section" id="api-section">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <div class="section-title">API Endpoints</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Path</th><th>설명</th><th>응답</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="api-method post">POST</span></td>
+            <td><span class="api-path">/api/meetings</span></td>
+            <td>미팅 생성 (인증 필수)</td>
+            <td style="color:var(--text-muted)">201 { id, shortId, inviteCode, ... }</td>
+          </tr>
+          <tr>
+            <td><span class="api-method get">GET</span></td>
+            <td><span class="api-path">/api/meetings/{id}</span></td>
+            <td>미팅 상세 조회</td>
+            <td style="color:var(--text-muted)">200 meeting / 404</td>
+          </tr>
+          <tr>
+            <td><span class="api-method get">GET</span></td>
+            <td><span class="api-path">/api/meetings/code/{inviteCode}</span></td>
+            <td>초대 코드로 미팅 조회</td>
+            <td style="color:var(--text-muted)">200 meeting / 404</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Request/Response Examples -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Request Body</div>
+        <pre style="font-size:11px;color:var(--text-dim);line-height:1.7;font-family:monospace;white-space:pre-wrap;">{
+  "title": "4월 팀 회식",
+  "description": "장소 추천 받습니다",
+  "location": "강남역 근처",
+  "dates": ["2026-04-20", "2026-04-21",
+            "2026-04-22", "2026-04-24",
+            "2026-04-25"],
+  "startTime": "09:00",
+  "endTime": "22:00"
+}</pre>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Response 201</div>
+        <pre style="font-size:11px;color:var(--text-dim);line-height:1.7;font-family:monospace;white-space:pre-wrap;">{
+  "id": "uuid-...",
+  "shortId": "abc1234",
+  "inviteCode": "ABC-1234",
+  "title": "4월 팀 회식",
+  "dates": ["2026-04-20", ...],
+  "timeRange": {
+    "start": "09:00",
+    "end": "22:00"
+  },
+  "createdAt": "2026-04-18T..."
+}</pre>
+      </div>
+    </div>
+
+    <!-- Error Responses -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px;">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:12px;">Error Responses</div>
+      <div style="display:grid;gap:8px;">
+        <div style="display:flex;gap:12px;align-items:baseline;">
+          <span style="font-family:monospace;font-size:11px;font-weight:600;color:var(--red);min-width:32px;">400</span>
+          <span style="font-size:12px;color:var(--text-dim);">유효성 검증 실패 — <code style="background:rgba(96,165,250,0.15);color:var(--blue);padding:1px 5px;border-radius:3px;font-size:11px;">{ error: "validation_error", fields: {...} }</code></span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:baseline;">
+          <span style="font-family:monospace;font-size:11px;font-weight:600;color:var(--red);min-width:32px;">401</span>
+          <span style="font-size:12px;color:var(--text-dim);">인증 필요 — 세션 만료 또는 미로그인</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:baseline;">
+          <span style="font-family:monospace;font-size:11px;font-weight:600;color:var(--red);min-width:32px;">500</span>
+          <span style="font-size:12px;color:var(--text-dim);">서버 내부 오류</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 05. Edge Cases ═══ -->
+  <div class="doc-section" id="edge-section">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <div class="section-title">Edge Cases &amp; Policy</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div class="edge-item"><span class="edge-code">E1</span><div class="edge-text"><strong>비로그인 사용자 접근</strong> → <code>/login</code>으로 리다이렉트 (로그인 후 <code>/meeting/new</code>로 복귀)</div></div>
+      <div class="edge-item"><span class="edge-code">E2</span><div class="edge-text"><strong>날짜 14일 초과 선택</strong> → 14일 제한 안내 토스트, 추가 선택 차단</div></div>
+      <div class="edge-item"><span class="edge-code">E3</span><div class="edge-text"><strong>시간 범위 역전 (end &lt; start)</strong> → 자동으로 end를 start+30분으로 조정</div></div>
+      <div class="edge-item"><span class="edge-code">E4</span><div class="edge-text"><strong>제출 중 네트워크 오류</strong> → 에러 배너 표시, 입력값 보존, 재시도 가능</div></div>
+      <div class="edge-item"><span class="edge-code">E5</span><div class="edge-text"><strong>중복 제출 방지</strong> → 제출 버튼 클릭 후 즉시 <code>disabled</code> + 로딩 스피너. 응답 받을 때까지 유지.</div></div>
+      <div class="edge-item"><span class="edge-code">E6</span><div class="edge-text"><strong>세션 만료 중 제출</strong> → 401 응답 → "세션이 만료되었습니다" 안내 후 <code>/login</code> 리다이렉트</div></div>
+      <div class="edge-item"><span class="edge-code">E7</span><div class="edge-text"><strong>제목 50자 초과 입력</strong> → <code>maxLength</code>로 차단 + 실시간 글자 수 카운터</div></div>
+      <div class="edge-item"><span class="edge-code">E8</span><div class="edge-text"><strong>페이지 뒤로가기/새로고침</strong> → 입력 데이터 없어짐 (별도 저장 없음). 복잡하면 추후 <code>beforeunload</code> 경고 추가.</div></div>
+      <div class="edge-item"><span class="edge-code">E9</span><div class="edge-text"><strong>공유 링크 복사 실패</strong> → <code>navigator.clipboard</code> 불가 시 fallback <code>execCommand('copy')</code>, 최종 실패 시 URL 텍스트 선택</div></div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 06. Component Map ═══ -->
+  <div class="doc-section">
+    <div class="section-header">
+      <div class="section-number">6</div>
+      <div class="section-title">Component Architecture</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
+      <pre style="font-size:12px;color:var(--text-dim);line-height:2;font-family:monospace;white-space:pre-wrap;"><span style="color:var(--blue);">src/pages/meeting/new/</span>
+├── <span style="color:var(--green);">+Page.tsx</span>            ← 메인 페이지 (폼 상태 관리)
+│
+├── <span style="color:var(--yellow);">MeetingForm.tsx</span>     ← 폼 UI (제목/설명/장소 입력)
+│   └── 유효성 검증 로직 포함
+│
+├── <span style="color:var(--yellow);">ShareModal.tsx</span>      ← 성공 모달 (링크+코드 공유)
+│   └── 클립보드 복사 로직 포함
+│
+<span style="color:var(--text-muted);">재사용 위젯:</span>
+├── <span style="color:var(--purple);">widgets/date-picker</span> → <span style="color:var(--green);">Calendar</span>
+│   └── CalendarProps: { selected, onSelectionChange, minDate, maxDate }
+│
+├── <span style="color:var(--purple);">widgets/time-picker</span> → <span style="color:var(--green);">TimeGrid</span> (미리보기용, read-only)
+│   └── TimeGridProps: { dates, timeSlots, selected, onSelectionChange }
+│
+└── <span style="color:var(--purple);">entities/meeting</span>   → <span style="color:var(--green);">generateTimeSlots()</span>
+    └── 시간 범위 → 슬롯 생성 유틸리티</pre>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══ 07. Implementation Status ═══ -->
+  <div class="doc-section" style="padding-bottom: 80px;">
+    <div class="section-header">
+      <div class="section-number">7</div>
+      <div class="section-title">Implementation Status</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px;">
+      <div class="status-item status-done"><span style="width:18px;text-align:center;">✓</span> Calendar 위젯 (드래그 + Shift 범위 선택)</div>
+      <div class="status-item status-done"><span style="width:18px;text-align:center;">✓</span> TimeGrid 위젯 (드래그 선택/해제)</div>
+      <div class="status-item status-done"><span style="width:18px;text-align:center;">✓</span> useDragSelect 훅 (마우스 + 터치)</div>
+      <div class="status-item status-done"><span style="width:18px;text-align:center;">✓</span> generateTimeSlots 유틸리티</div>
+      <div class="status-item status-done"><span style="width:18px;text-align:center;">✓</span> useAuth 훅 + NavBar 위젯</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> /meeting/new 페이지 + 폼 상태 관리</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> MeetingForm 컴포넌트 (제목/설명/장소)</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> 시간 범위 선택 UI (시작/끝 select)</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> TimeGrid 미리보기 (읽기 전용)</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> POST /api/meetings 프록시 라우트</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> ShareModal (링크 + 초대 코드)</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> 유효성 검증 (클라이언트 + 서버)</div>
+      <div class="status-item status-todo"><span style="width:18px;text-align:center;">○</span> 인증 가드 (비로그인 → /login 리다이렉트)</div>
+    </div>
+  </div>
+
+  <script>
+    function highlightNote(num) {
+      document.querySelectorAll('.annotation-item.highlight').forEach(el => el.classList.remove('highlight'));
+      document.querySelectorAll('.callout-marker.active').forEach(el => el.classList.remove('active'));
+      const note = document.getElementById('note-' + num);
+      const marker = document.querySelector('.callout-marker[data-note="' + num + '"]');
+      if (note) { note.classList.add('highlight'); note.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      if (marker) marker.classList.add('active');
+      setTimeout(() => { if (note) note.classList.remove('highlight'); if (marker) marker.classList.remove('active'); }, 3000);
+    }
+
+    function toggleAnnotations() {
+      const body = document.getElementById('doc-body');
+      const btn = document.getElementById('btn-annotations');
+      body.classList.toggle('annotations-hidden');
+      btn.classList.toggle('active');
+    }
+
+    function scrollTo(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.classList.add('flash-highlight');
+      setTimeout(() => el.classList.remove('flash-highlight'), 1500);
+    }
+  </script>
+</body>
+</html>

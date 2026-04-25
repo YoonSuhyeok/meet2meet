@@ -1,0 +1,89 @@
+import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const docsSiteRoot = path.resolve(__dirname, "..");
+const projectRoot = path.resolve(docsSiteRoot, "..");
+const sourceDocsRoot = path.resolve(projectRoot, "docs");
+
+const docsContentRoot = path.resolve(
+	docsSiteRoot,
+	"src",
+	"content",
+	"docs",
+	"planning",
+);
+const publicWireframesRoot = path.resolve(docsSiteRoot, "public", "wireframes");
+const publicOpenapiRoot = path.resolve(docsSiteRoot, "public", "openapi");
+
+const planningMappings = [
+	{
+		source: path.resolve(sourceDocsRoot, "ARCHITECTURE.md"),
+		dest: path.resolve(docsContentRoot, "architecture.md"),
+		title: "아키텍처",
+	},
+	{
+		source: path.resolve(sourceDocsRoot, "PROJECT_SETUP.md"),
+		dest: path.resolve(docsContentRoot, "project-setup.md"),
+		title: "프로젝트 설정",
+	},
+	{
+		source: path.resolve(sourceDocsRoot, "features", "auth.md"),
+		dest: path.resolve(docsContentRoot, "auth.md"),
+		title: "인증 플로우",
+	},
+	{
+		source: path.resolve(sourceDocsRoot, "features", "time-select.md"),
+		dest: path.resolve(docsContentRoot, "time-select.md"),
+		title: "시간 선택 테이블",
+	},
+];
+
+const wireframeMappings = [
+	{
+		source: path.resolve(
+			sourceDocsRoot,
+			"features",
+			"01.auth-wireframe-login.html",
+		),
+		dest: path.resolve(publicWireframesRoot, "01.auth-wireframe-login.html"),
+	},
+	{
+		source: path.resolve(
+			sourceDocsRoot,
+			"features",
+			"02.meeting-new-wireframe.html",
+		),
+		dest: path.resolve(publicWireframesRoot, "02.meeting-new-wireframe.html"),
+	},
+];
+
+const openApiSource = path.resolve(sourceDocsRoot, "MEETING_API_SPEC.yaml");
+const openApiDest = path.resolve(publicOpenapiRoot, "MEETING_API_SPEC.yaml");
+
+function withFrontMatter(title, body) {
+	return `---\ntitle: ${title}\n---\n\n${body.trim()}\n`;
+}
+
+for (const mapping of planningMappings) {
+	await mkdir(path.dirname(mapping.dest), { recursive: true });
+	const sourceBody = await readFile(mapping.source, "utf8");
+	await writeFile(
+		mapping.dest,
+		withFrontMatter(mapping.title, sourceBody),
+		"utf8",
+	);
+}
+
+for (const mapping of wireframeMappings) {
+	await mkdir(path.dirname(mapping.dest), { recursive: true });
+	await copyFile(mapping.source, mapping.dest);
+}
+
+await mkdir(path.dirname(openApiDest), { recursive: true });
+await copyFile(openApiSource, openApiDest);
+
+console.log("Planning docs, wireframes, and OpenAPI spec synchronized.");
