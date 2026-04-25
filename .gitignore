@@ -111,6 +111,13 @@ dist
 
 # Docusaurus cache and generated files
 .docusaurus
+docs-site/build/
+docs-site/.docusaurus/
+docs-site/openapi/
+docs-site/static/openapi/
+docs-site/static/wireframes/
+docs-site/docs/planning-sync/*.md
+docs-site/docs/api/meeting/generated/
 
 # Serverless directories
 .serverless/
