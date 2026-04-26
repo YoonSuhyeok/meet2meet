@@ -40,6 +40,11 @@ const planningMappings = [
 		dest: path.resolve(docsContentRoot, "time-select.md"),
 		title: "시간 선택 테이블",
 	},
+	{
+		source: path.resolve(sourceDocsRoot, "PWA_SETUP.md"),
+		dest: path.resolve(docsContentRoot, "pwa-setup.md"),
+		title: "PWA 설정",
+	},
 ];
 
 const wireframeMappings = [
