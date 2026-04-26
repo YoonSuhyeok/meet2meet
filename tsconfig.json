@@ -5,16 +5,22 @@
         "module": "ES2022",
         "moduleResolution": "Bundler",
         "lib": ["DOM", "DOM.Iterable", "ESNext"],
-        "types": ["vite/client", "vike-react", "@cloudflare/vitest-pool-workers/types"],
+        "types": [
+            "vite/client",
+            "vike-react",
+            "node"
+        ],
         "noEmit": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
         "jsx": "react-jsx",
         "jsxImportSource": "react",
-        "baseUrl": ".",
+
         "paths": {
             "@/*": ["./*"]
         }
     },
-    "exclude": ["dist"]
+    "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "vitest.config.ts"],
+    "exclude": ["dist", "docs-site"]
 }
+
