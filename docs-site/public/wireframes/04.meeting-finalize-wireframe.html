@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet2Meet - Meeting Finalize Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas: #1a1a2e;
+      --surface: #16213e;
+      --accent: #e94560;
+      --accent-soft: rgba(233, 69, 96, 0.15);
+      --text: #eee;
+      --text-dim: #8892a4;
+      --text-muted: #5a6377;
+      --border: #2a3a5c;
+      --wire-bg: #f8f9fb;
+      --wire-border: #e2e5ea;
+      --wire-text: #1a1a1a;
+      --wire-dim: #6b7280;
+      --green: #34d399;
+      --blue: #60a5fa;
+      --yellow: #fbbf24;
+      --purple: #a78bfa;
+    }
+
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--canvas);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(26, 26, 46, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-left { display: flex; align-items: center; gap: 16px; }
+    .toolbar-title { font-size: 14px; font-weight: 600; }
+    .toolbar-breadcrumb { font-size: 12px; color: var(--text-dim); }
+    .toolbar-actions { display: flex; gap: 8px; }
+
+    .toolbar-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .toolbar-btn:hover { color: var(--text); border-color: var(--text-dim); }
+    .toolbar-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .doc-section { max-width: 1280px; margin: 0 auto; padding: 48px 32px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+
+    .section-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .section-title { font-size: 18px; font-weight: 700; }
+    .section-divider { border: none; border-top: 1px solid var(--border); }
+
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+    .info-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
+    .info-card-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .info-card-desc { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+    .flow-container { display: flex; align-items: center; overflow-x: auto; padding: 8px 0; }
+    .flow-node { padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .flow-sub { font-size: 11px; opacity: .65; margin-top: 2px; }
+    .flow-arrow { color: var(--text-muted); font-size: 18px; padding: 0 8px; }
+
+    .screen-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      margin-bottom: 48px;
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .screen-row.reverse { grid-template-columns: 1fr auto; }
+    .screen-row.reverse .screen-wireframe { order: 2; }
+    .screen-row.reverse .annotation-panel { order: 1; border-left: none; border-right: 1px solid var(--border); }
+
+    .screen-wireframe { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .screen-tag { align-self: flex-start; font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+
+    .device-frame {
+      background: var(--wire-bg);
+      border-radius: 16px;
+      border: 2px solid var(--wire-border);
+      overflow: hidden;
+      width: 520px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .device-frame.narrow { width: 360px; }
+
+    .device-chrome {
+      background: #fff;
+      border-bottom: 1px solid var(--wire-border);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chrome-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wire-border); }
+    .chrome-url { flex: 1; background: #f3f4f6; border-radius: 4px; padding: 3px 8px; font-size: 10px; color: var(--wire-dim); font-family: monospace; }
+
+    .wire-content { padding: 22px; color: var(--wire-text); position: relative; }
+    .wire-title { font-size: 20px; font-weight: 700; color: var(--wire-text); }
+    .wire-sub { font-size: 12px; color: var(--wire-dim); }
+
+    .wire-card {
+      margin-top: 12px;
+      border: 1px solid var(--wire-border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px 12px;
+    }
+
+    .wire-card-title { font-size: 12px; font-weight: 600; color: var(--wire-text); margin-bottom: 6px; }
+    .wire-list { display: grid; gap: 8px; }
+
+    .wire-row {
+      border: 1px solid #e9ecf2;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--wire-text);
+      background: #fcfdff;
+    }
+
+    .wire-row.selected { border-color: rgba(52, 211, 153, 0.55); background: rgba(52, 211, 153, 0.12); }
+    .wire-chip { border: 1px solid var(--wire-border); border-radius: 999px; font-size: 11px; color: var(--wire-dim); padding: 2px 8px; background: #fff; }
+
+    .wire-note {
+      font-size: 11px;
+      color: #7a8398;
+      margin-top: 8px;
+      line-height: 1.55;
+    }
+
+    .wire-actions { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .wire-btn-primary {
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #111827;
+      color: #fff;
+      text-align: center;
+    }
+
+    .wire-btn-secondary {
+      border: 1px solid var(--wire-border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      background: #fff;
+      color: var(--wire-text);
+      text-align: center;
+    }
+
+    .annotation-panel { border-left: 1px solid var(--border); padding: 24px; width: 360px; }
+    .annotation-panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    .annotation-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 8px;
+      border-radius: 6px;
+      border-bottom: 1px solid rgba(42, 58, 92, 0.45);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .annotation-item:last-child { border-bottom: none; }
+    .annotation-item:hover { background: rgba(233, 69, 96, 0.08); }
+    .annotation-item.highlight { background: var(--accent-soft); }
+
+    .annotation-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .annotation-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .annotation-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+    .annotation-desc code { background: rgba(96, 165, 250, 0.16); color: var(--blue); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+    .callout-marker {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.3);
+      transition: transform 0.15s;
+    }
+
+    .callout-marker:hover { transform: scale(1.12); }
+    .callout-marker.active { box-shadow: 0 0 0 5px rgba(233, 69, 96, 0.55); }
+
+    .model-table, .api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .model-table th, .api-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    .model-table td, .api-table td { padding: 10px 16px; color: var(--text-dim); border-bottom: 1px solid rgba(42, 58, 92, 0.4); }
+    .model-table tr:last-child td, .api-table tr:last-child td { border-bottom: none; }
+
+    .model-field { font-family: monospace; font-size: 12px; color: var(--text); }
+    .model-type { font-family: monospace; font-size: 11px; color: var(--purple); }
+
+    .edge-item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(42, 58, 92, 0.4); }
+    .edge-item:last-child { border-bottom: none; }
+    .edge-code { font-family: monospace; font-size: 11px; font-weight: 600; background: rgba(96, 165, 250, 0.1); color: var(--blue); padding: 2px 8px; border-radius: 4px; height: fit-content; }
+    .edge-text { font-size: 13px; color: var(--text-dim); }
+    .edge-text strong { color: var(--text); }
+
+    .status-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-muted); }
+
+    .annotations-hidden .callout-marker { display: none !important; }
+    .annotations-hidden .annotation-panel { display: none !important; }
+    .annotations-hidden .screen-row,
+    .annotations-hidden .screen-row.reverse { grid-template-columns: 1fr; }
+
+    @media (max-width: 900px) {
+      .screen-row, .screen-row.reverse { grid-template-columns: 1fr; }
+      .screen-row.reverse .screen-wireframe { order: 1; }
+      .screen-row.reverse .annotation-panel { order: 2; border-right: none; border-left: none; border-top: 1px solid var(--border); }
+      .annotation-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+      .device-frame, .device-frame.narrow { width: 100%; max-width: 520px; }
+    }
+
+    .flash-highlight { animation: flash 1.5s ease; }
+    @keyframes flash {
+      0% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(233, 69, 96, 0.15); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+  </style>
+</head>
+<body id="doc-body">
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-title">Meet2Meet</div>
+      <div class="toolbar-breadcrumb">Features / Meeting / Finalize - Wireframe</div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="toolbar-btn active" id="btn-annotations" onclick="toggleAnnotations()">Annotations</button>
+      <button class="toolbar-btn" onclick="scrollToSection('data-section')">Data Model</button>
+      <button class="toolbar-btn" onclick="scrollToSection('api-section')">API Spec</button>
+      <button class="toolbar-btn" onclick="scrollToSection('edge-section')">Edge Cases</button>
+    </div>
+  </div>
+
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">0</div>
+      <div class="section-title">Feature Brief</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-label">Route</div>
+        <div class="info-card-value" style="font-family: monospace;">/meeting/{id}/finalize</div>
+        <div class="info-card-desc">주최자 확정 전용 단계 + 참여자 결과 확인</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Primary Job</div>
+        <div class="info-card-value">최종 시간 확정 및 공지</div>
+        <div class="info-card-desc">집계 결과에서 1개 슬롯을 선택해 모임을 잠금 처리</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Entry</div>
+        <div class="info-card-value">상세 화면 운영 액션</div>
+        <div class="info-card-desc">/meeting/{id}의 투표 마감/확정 CTA에서 진입</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Core Widgets</div>
+        <div class="info-card-value">추천 슬롯 리스트 + 공지 박스</div>
+        <div class="info-card-desc">후보 비교, 확정 사유, 재공지까지 한 흐름으로 처리</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <div class="section-title">User Flow</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; overflow-x: auto;">
+      <div class="flow-container">
+        <div class="flow-node" style="background: rgba(96,165,250,0.12); color: var(--blue);">/meeting/{id}<div class="flow-sub">응답 집계 확인</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(251,191,36,0.12); color: var(--yellow);">후보 슬롯 비교<div class="flow-sub">겹침/우선순위 검토</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.14); color: var(--green);">POST /finalize<div class="flow-sub">확정 + 잠금</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(168,85,247,0.12); color: var(--purple);">참여자 결과 화면<div class="flow-sub">최종 일정 확인</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.2); color: var(--green); border: 1px solid rgba(52,211,153,0.3);">알림 발송<div class="flow-sub">리마인드/캘린더 공유</div></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <div class="section-title">Screen Design</div>
+    </div>
+
+    <div class="screen-row">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 01 - Host Final Decision</div>
+        <div class="device-frame">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/meeting/550e84.../finalize</div>
+          </div>
+          <div class="wire-content">
+            <span class="callout-marker" style="top:58px;right:12px" data-note="1" onclick="highlightNote(1)">1</span>
+            <h1 class="wire-title">4월 팀 회식 일정 확정</h1>
+            <p class="wire-sub">현재 7명 중 6명 응답 완료 · 상위 후보 3개</p>
+
+            <div class="wire-card" style="margin-top: 14px;">
+              <span class="callout-marker" style="top:136px;left:8px" data-note="2" onclick="highlightNote(2)">2</span>
+              <div class="wire-card-title">추천 후보 슬롯</div>
+              <div class="wire-list">
+                <div class="wire-row selected"><span>4/24 (목) 19:00 - 20:30</span><span class="wire-chip">5명 가능</span></div>
+                <div class="wire-row"><span>4/25 (금) 18:30 - 20:00</span><span class="wire-chip">4명 가능</span></div>
+                <div class="wire-row"><span>4/21 (월) 19:00 - 20:30</span><span class="wire-chip">4명 가능</span></div>
+              </div>
+              <p class="wire-note">동률일 경우 주최자 선호 태그와 최근 선택 히스토리를 우선 반영합니다.</p>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:276px;right:12px" data-note="3" onclick="highlightNote(3)">3</span>
+              <div class="wire-card-title">확정 공지 메시지</div>
+              <div style="border:1px solid var(--wire-border); border-radius:8px; padding:10px; font-size:12px; color:var(--wire-dim); background:#fff;">
+                최종 일정은 4/24(목) 19:00입니다. 장소는 강남역 인근이며, 상세 공지는 별도 공유합니다.
+              </div>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:388px;left:8px" data-note="4" onclick="highlightNote(4)">4</span>
+              <div class="wire-card-title">알림 옵션</div>
+              <div class="wire-list">
+                <div class="wire-row"><span>미응답자 자동 제외</span><span class="wire-chip">ON</span></div>
+                <div class="wire-row"><span>확정 즉시 리마인드 발송</span><span class="wire-chip">ON</span></div>
+                <div class="wire-row"><span>캘린더 링크 포함</span><span class="wire-chip">ON</span></div>
+              </div>
+            </div>
+
+            <div class="wire-actions">
+              <span class="callout-marker" style="top:520px;right:12px" data-note="5" onclick="highlightNote(5)">5</span>
+              <div class="wire-btn-secondary">미리보기</div>
+              <div class="wire-btn-primary">최종 확정하기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+
+        <div class="annotation-item" id="note-1">
+          <div class="annotation-num">1</div>
+          <div>
+            <div class="annotation-title">확정 단계 헤더</div>
+            <div class="annotation-desc">확정 전용 페이지임을 명확히 표시하고 응답률을 함께 노출합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-2">
+          <div class="annotation-num">2</div>
+          <div>
+            <div class="annotation-title">추천 슬롯 랭킹</div>
+            <div class="annotation-desc">집계 API의 상위 후보를 순서대로 노출하고, 선택 항목은 강조 처리합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-3">
+          <div class="annotation-num">3</div>
+          <div>
+            <div class="annotation-title">공지 메시지 편집</div>
+            <div class="annotation-desc">확정과 동시에 공유될 메시지를 사전 작성합니다. 서버에는 <code>announcementText</code>로 저장합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-4">
+          <div class="annotation-num">4</div>
+          <div>
+            <div class="annotation-title">운영 옵션</div>
+            <div class="annotation-desc">알림/캘린더 링크 등 운영 옵션을 체크박스 토글로 구성합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-5">
+          <div class="annotation-num">5</div>
+          <div>
+            <div class="annotation-title">확정 CTA</div>
+            <div class="annotation-desc">확정 시 <code>POST /api/meetings/{id}/finalize</code> 호출 후 상태를 <code>finalized</code>로 고정합니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen-row reverse">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 02 - Participant Final Result View</div>
+        <div class="device-frame narrow">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/m/abc1234/result</div>
+          </div>
+          <div class="wire-content" style="padding: 20px;">
+            <span class="callout-marker" style="top:54px;right:8px" data-note="6" onclick="highlightNote(6)">6</span>
+            <h2 style="font-size:18px; font-weight:700; color: var(--wire-text);">4월 팀 회식 일정이 확정되었어요</h2>
+            <p class="wire-sub" style="margin-top: 4px;">주최자가 최종 시간을 확정했습니다.</p>
+
+            <div class="wire-card" style="margin-top: 12px;">
+              <span class="callout-marker" style="top:154px;left:8px" data-note="7" onclick="highlightNote(7)">7</span>
+              <div class="wire-card-title">최종 일정</div>
+              <div style="font-size:16px; font-weight:700; color: var(--wire-text);">4/24 (목) 19:00 - 20:30</div>
+              <div style="font-size:12px; color: var(--wire-dim); margin-top: 4px;">강남역 인근 (상세 장소 추후 공지)</div>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:252px;right:8px" data-note="8" onclick="highlightNote(8)">8</span>
+              <div class="wire-card-title">공지</div>
+              <p style="font-size:12px; color: var(--wire-dim); line-height:1.6;">최종 일정은 4/24(목) 19:00입니다. 회식 장소 링크는 행사 당일 오전 공유 예정입니다.</p>
+            </div>
+
+            <div class="wire-actions" style="grid-template-columns: 1fr;">
+              <span class="callout-marker" style="top:382px;left:8px" data-note="9" onclick="highlightNote(9)">9</span>
+              <div class="wire-btn-primary">캘린더에 추가</div>
+              <div class="wire-btn-secondary">결과 링크 복사</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+
+        <div class="annotation-item" id="note-6">
+          <div class="annotation-num">6</div>
+          <div>
+            <div class="annotation-title">확정 안내 배너</div>
+            <div class="annotation-desc">투표 종료 상태임을 명확히 알리고 추가 입력 UI는 숨깁니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-7">
+          <div class="annotation-num">7</div>
+          <div>
+            <div class="annotation-title">최종 시간 카드</div>
+            <div class="annotation-desc">사용자가 가장 먼저 확인해야 하는 정보(일시/장소)를 상단 고정 정보로 제공합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-8">
+          <div class="annotation-num">8</div>
+          <div>
+            <div class="annotation-title">주최자 공지 표시</div>
+            <div class="annotation-desc">확정 시 저장한 안내문을 그대로 노출해 참석 혼선을 줄입니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-9">
+          <div class="annotation-num">9</div>
+          <div>
+            <div class="annotation-title">후속 액션</div>
+            <div class="annotation-desc">캘린더 추가(ICS/Google)와 결과 공유를 핵심 CTA로 제공합니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="data-section">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <div class="section-title">Data Model</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">FinalizeMeetingRequest</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">slotKey</span></td><td><span class="model-type">string</span></td><td>최종 선택 슬롯 키 (예: 2026-04-24T19:00)</td></tr>
+          <tr><td><span class="model-field">announcementText</span></td><td><span class="model-type">string</span></td><td>참여자에게 노출할 확정 공지</td></tr>
+          <tr><td><span class="model-field">notifyOptions</span></td><td><span class="model-type">{ remind, includeCalendar }</span></td><td>확정 후 알림 정책</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">FinalizedMeetingResponse</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">meetingId</span></td><td><span class="model-type">string</span></td><td>미팅 ID</td></tr>
+          <tr><td><span class="model-field">status</span></td><td><span class="model-type">"finalized"</span></td><td>확정 상태 플래그</td></tr>
+          <tr><td><span class="model-field">finalSlot</span></td><td><span class="model-type">{ date, start, end }</span></td><td>최종 확정 시간</td></tr>
+          <tr><td><span class="model-field">announcementText</span></td><td><span class="model-type">string</span></td><td>최종 공지 문구</td></tr>
+          <tr><td><span class="model-field">finalizedAt</span></td><td><span class="model-type">string (ISO)</span></td><td>확정 시각</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="api-section">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <div class="section-title">API Endpoints</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Path</th><th>설명</th><th>응답</th></tr></thead>
+        <tbody>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/finalize</span></td><td>최종 시간 확정 + 미팅 잠금</td><td>200 / 400 / 409</td></tr>
+          <tr><td>GET</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/final</span></td><td>확정 결과 조회 (참여자 공유용)</td><td>200 / 404</td></tr>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/notify</span></td><td>확정 알림 재발송</td><td>202 / 400</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="edge-section">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <div class="section-title">Edge Cases and Policy</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div class="edge-item"><span class="edge-code">E1</span><div class="edge-text"><strong>동률 후보 다수</strong> -> 주최자 수동 선택 필수, 자동 확정 금지</div></div>
+      <div class="edge-item"><span class="edge-code">E2</span><div class="edge-text"><strong>확정 후 재투표 요청</strong> -> 상태를 reopened로 바꾸기 전에는 불가</div></div>
+      <div class="edge-item"><span class="edge-code">E3</span><div class="edge-text"><strong>알림 발송 실패</strong> -> 확정은 유지, 발송 재시도 큐 안내</div></div>
+      <div class="edge-item"><span class="edge-code">E4</span><div class="edge-text"><strong>확정 API 중복 호출</strong> -> 409 응답과 함께 현재 확정 슬롯 반환</div></div>
+      <div class="edge-item"><span class="edge-code">E5</span><div class="edge-text"><strong>결과 링크 만료</strong> -> 404 + 재초대 요청 CTA</div></div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" style="padding-bottom: 80px;">
+    <div class="section-header">
+      <div class="section-number">6</div>
+      <div class="section-title">Implementation Status (Finalize)</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px;">
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> /meeting/{id}/finalize 라우트 추가</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 추천 후보 슬롯 랭킹 API 연동</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 확정 공지 작성/저장 폼</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> POST /finalize 처리 + 잠금 상태 전환</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 참여자 결과 화면 + 캘린더 CTA</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 알림 실패/중복 확정 에러 처리</div>
+    </div>
+  </div>
+
+  <script>
+    function highlightNote(num) {
+      document.querySelectorAll(".annotation-item.highlight").forEach((el) => el.classList.remove("highlight"));
+      document.querySelectorAll(".callout-marker.active").forEach((el) => el.classList.remove("active"));
+
+      const note = document.getElementById("note-" + num);
+      const marker = document.querySelector('.callout-marker[data-note="' + num + '"]');
+
+      if (note) {
+        note.classList.add("highlight");
+        note.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      if (marker) marker.classList.add("active");
+
+      setTimeout(() => {
+        if (note) note.classList.remove("highlight");
+        if (marker) marker.classList.remove("active");
+      }, 3000);
+    }
+
+    function toggleAnnotations() {
+      const body = document.getElementById("doc-body");
+      const btn = document.getElementById("btn-annotations");
+      body.classList.toggle("annotations-hidden");
+      btn.classList.toggle("active");
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("flash-highlight");
+      setTimeout(() => el.classList.remove("flash-highlight"), 1500);
+    }
+  </script>
+</body>
+</html>

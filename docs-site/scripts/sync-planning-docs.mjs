@@ -64,6 +64,22 @@ const wireframeMappings = [
 		),
 		dest: path.resolve(publicWireframesRoot, "02.meeting-new-wireframe.html"),
 	},
+	{
+		source: path.resolve(
+			sourceDocsRoot,
+			"features",
+			"03.meeting-detail-wireframe.html",
+		),
+		dest: path.resolve(publicWireframesRoot, "03.meeting-detail-wireframe.html"),
+	},
+	{
+		source: path.resolve(
+			sourceDocsRoot,
+			"features",
+			"04.meeting-finalize-wireframe.html",
+		),
+		dest: path.resolve(publicWireframesRoot, "04.meeting-finalize-wireframe.html"),
+	},
 ];
 
 const openApiSource = path.resolve(sourceDocsRoot, "MEETING_API_SPEC.yaml");
