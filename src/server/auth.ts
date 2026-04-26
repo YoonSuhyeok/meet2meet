@@ -1,4 +1,5 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
 import { logger } from "hono/logger";
 
@@ -45,13 +46,26 @@ const PROVIDERS = {
 
 type Provider = keyof typeof PROVIDERS;
 
+const AUTH_COOKIE_NAME = "meet2meet_auth";
+const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
+const OAUTH_STATE_COOKIE_PREFIX = "meet2meet_oauth_state_";
+const OAUTH_STATE_TTL_SECONDS = 60 * 10;
+
 const authRoutes = new Hono<{ Bindings: Bindings }>();
 authRoutes.use(logger());
 
-authRoutes.post("/logout", (c) => c.json({ ok: true }));
+authRoutes.post("/logout", (c) => {
+    deleteCookie(c, AUTH_COOKIE_NAME, {
+        path: "/",
+        secure: isSecureCookie(c.env.BASE_URL),
+        sameSite: "Lax",
+    });
+
+    return c.json({ ok: true });
+});
 
 authRoutes.get("/me", async (c) => {
-    const token = getBearerToken(c.req.header("Authorization"));
+    const token = getAuthToken(c);
     if (!token) {
         return c.json({ error: "unauthorized" }, 401);
     }
@@ -75,26 +89,38 @@ authRoutes.get("/me", async (c) => {
     }
 });
 
-authRoutes.get("/:provider", async ({ req, env, redirect }) => {
-    const provider = req.param("provider") as Provider;
+authRoutes.get("/:provider", async (c) => {
+    const provider = c.req.param("provider") as Provider;
     const config = PROVIDERS[provider];
     if (!config) {
-        return redirect("/login?error=auth_failed");
+        return c.redirect("/login?error=auth_failed");
     }
 
+    const state = generateOAuthState();
+
     const clientId =
-        env[`${provider.toUpperCase()}_CLIENT_ID` as keyof Bindings];
-    const callbackUrl = `${env.BASE_URL}/api/auth/${provider}/callback`;
+        c.env[`${provider.toUpperCase()}_CLIENT_ID` as keyof Bindings];
+    const callbackUrl = `${c.env.BASE_URL}/api/auth/${provider}/callback`;
+
+    // CSRF 방지를 위해 provider별 state를 HttpOnly 쿠키로 저장
+    setCookie(c, getOAuthStateCookieName(provider), state, {
+        path: "/",
+        maxAge: OAUTH_STATE_TTL_SECONDS,
+        httpOnly: true,
+        secure: isSecureCookie(c.env.BASE_URL),
+        sameSite: "Lax",
+    });
 
     const params = new URLSearchParams({
         response_type: "code",
         client_id: clientId,
         redirect_uri: callbackUrl,
+        state,
         ...(config.scope ? { scope: config.scope } : {}),
     });
 
     console.log(`[auth] ${provider} 로그인 시작 → ${config.authUrl}`);
-    return redirect(`${config.authUrl}?${params.toString()}`);
+    return c.redirect(`${config.authUrl}?${params.toString()}`);
 });
 
 authRoutes.get("/:provider/callback", async (c) => {
@@ -102,6 +128,19 @@ authRoutes.get("/:provider/callback", async (c) => {
     const config = PROVIDERS[provider];
     if (!config) {
         return c.redirect("/login?error=auth_failed");
+    }
+
+    const stateFromQuery = c.req.query("state") ?? "";
+    const stateCookieName = getOAuthStateCookieName(provider);
+    const stateFromCookie = getCookie(c, stateCookieName) ?? "";
+    deleteCookie(c, stateCookieName, {
+        path: "/",
+        secure: isSecureCookie(c.env.BASE_URL),
+        sameSite: "Lax",
+    });
+
+    if (!stateFromQuery || !stateFromCookie || stateFromQuery !== stateFromCookie) {
+        return c.redirect("/login?error=invalid_state");
     }
 
     const code = c.req.query("code");
@@ -172,15 +211,42 @@ authRoutes.get("/:provider/callback", async (c) => {
         email: user.email,
         profileImage: user.profileImage,
         provider,
-        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
+        exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS,
     };
 
     const appToken = await sign(payload, env.JWT_SECRET, "HS256");
-    return c.redirect(buildCallbackRedirect(env.BASE_URL, appToken));
+    setCookie(c, AUTH_COOKIE_NAME, appToken, {
+        path: "/",
+        maxAge: TOKEN_TTL_SECONDS,
+        httpOnly: true,
+        secure: isSecureCookie(env.BASE_URL),
+        sameSite: "Lax",
+    });
+
+    return c.redirect(buildCallbackRedirect(env.BASE_URL));
 });
 
-function buildCallbackRedirect(baseUrl: string, token: string) {
-    return `${baseUrl}/auth/callback#token=${encodeURIComponent(token)}`;
+function buildCallbackRedirect(baseUrl: string) {
+    return `${baseUrl}/auth/callback`;
+}
+
+function getOAuthStateCookieName(provider: Provider) {
+    return `${OAUTH_STATE_COOKIE_PREFIX}${provider}`;
+}
+
+function generateOAuthState() {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function getAuthToken(c: Context<{ Bindings: Bindings }>) {
+    const bearerToken = getBearerToken(c.req.header("Authorization"));
+    if (bearerToken) {
+        return bearerToken;
+    }
+
+    return getCookie(c, AUTH_COOKIE_NAME) ?? null;
 }
 
 function getBearerToken(authorizationHeader?: string) {
@@ -189,6 +255,10 @@ function getBearerToken(authorizationHeader?: string) {
     }
 
     return authorizationHeader.slice("Bearer ".length).trim() || null;
+}
+
+function isSecureCookie(baseUrl: string) {
+    return baseUrl.startsWith("https://");
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: OAuth 제공자별 응답 구조가 다름

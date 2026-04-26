@@ -1,36 +1,16 @@
-const AUTH_TOKEN_KEY = "meet2meet.auth.token";
-
 export function getStoredAuthToken() {
-    if (typeof window === "undefined") {
-        return null;
-    }
-
-    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+    // HttpOnly 쿠키는 JS에서 읽을 수 없음
+    return null;
 }
 
 export function setStoredAuthToken(token: string) {
-    if (typeof window === "undefined") {
-        return;
-    }
-
-    window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+    void token;
 }
 
 export function clearStoredAuthToken() {
-    if (typeof window === "undefined") {
-        return;
-    }
-
-    window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    // 쿠키 삭제는 서버 /api/auth/logout에서 처리
 }
 
 export function createAuthHeaders(init?: HeadersInit): Headers {
-    const headers = new Headers(init);
-    const token = getStoredAuthToken();
-
-    if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-    }
-
-    return headers;
+    return new Headers(init);
 }

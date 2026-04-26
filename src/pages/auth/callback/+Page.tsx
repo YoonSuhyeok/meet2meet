@@ -1,18 +1,8 @@
 import { useEffect } from "react";
-import { setStoredAuthToken } from "@/src/features/auth";
 
 export default function Page() {
     useEffect(() => {
-        const hash = new URLSearchParams(window.location.hash.slice(1));
-        const token = hash.get("token");
-
-        if (!token) {
-            window.location.replace("/login?error=auth_failed");
-            return;
-        }
-
-        setStoredAuthToken(token);
-        window.history.replaceState(null, "", "/auth/callback");
+        // 인증 쿠키는 서버에서 이미 설정되었으므로 홈으로 이동
         window.location.replace("/");
     }, []);
 

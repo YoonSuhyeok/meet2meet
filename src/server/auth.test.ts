@@ -1,7 +1,17 @@
-import { env } from "cloudflare:test";
 import { sign } from "hono/jwt";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { authRoutes } from "./auth";
+
+const env = {
+	JWT_SECRET: "test-jwt-secret",
+	BASE_URL: "http://localhost:3000",
+	NAVER_CLIENT_ID: "naver-client-id",
+	NAVER_CLIENT_SECRET: "naver-client-secret",
+	KAKAO_CLIENT_ID: "kakao-client-id",
+	KAKAO_CLIENT_SECRET: "kakao-client-secret",
+	GOOGLE_CLIENT_ID: "google-client-id",
+	GOOGLE_CLIENT_SECRET: "google-client-secret",
+};
 
 async function signToken(
 	payload: Record<string, unknown>,
@@ -78,6 +88,31 @@ describe("authRoutes /me", () => {
 			provider: "naver",
 		});
 	});
+
+	it("쿠키 토큰으로도 사용자 정보 반환", async () => {
+		const token = await signToken({
+			sub: "u-2",
+			name: "쿠키유저",
+			email: "cookie@example.com",
+			profileImage: "",
+			provider: "google",
+			exp: Math.floor(Date.now() / 1000) + 60 * 60,
+		});
+		const res = await authRoutes.request(
+			"/me",
+			{ headers: { Cookie: `meet2meet_auth=${token}` } },
+			env,
+		);
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({
+			id: "u-2",
+			name: "쿠키유저",
+			email: "cookie@example.com",
+			profileImage: "",
+			provider: "google",
+		});
+	});
 });
 
 describe("authRoutes OAuth callback (naver)", () => {
@@ -91,13 +126,39 @@ describe("authRoutes OAuth callback (naver)", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("code 없으면 /login?error=auth_failed로 리다이렉트", async () => {
-		const res = await authRoutes.request("/naver/callback", {}, env);
+	it("/naver 시작 시 state를 발급하고 쿠키를 설정한다", async () => {
+		const res = await authRoutes.request("/naver", {}, env);
 		expect(res.status).toBe(302);
-		expect(res.headers.get("Location")).toBe("/login?error=auth_failed");
+
+		const location = res.headers.get("Location") ?? "";
+		expect(location.startsWith("https://nid.naver.com/oauth2.0/authorize?")).toBe(
+			true,
+		);
+		const state = new URL(location).searchParams.get("state");
+		expect(state && state.length > 0).toBe(true);
+
+		const setCookie = res.headers.get("Set-Cookie") ?? "";
+		expect(setCookie.includes("meet2meet_oauth_state_naver=")).toBe(true);
+		expect(setCookie.includes("HttpOnly")).toBe(true);
 	});
 
-	it("토큰 교환 성공 + 사용자 정보 정상이면 /auth/callback#token=... 리다이렉트", async () => {
+	it("state 없으면 /login?error=invalid_state로 리다이렉트", async () => {
+		const res = await authRoutes.request("/naver/callback", {}, env);
+		expect(res.status).toBe(302);
+		expect(res.headers.get("Location")).toBe("/login?error=invalid_state");
+	});
+
+	it("state 불일치면 /login?error=invalid_state로 리다이렉트", async () => {
+		const res = await authRoutes.request(
+			"/naver/callback?code=abc&state=query-state",
+			{ headers: { Cookie: "meet2meet_oauth_state_naver=cookie-state" } },
+			env,
+		);
+		expect(res.status).toBe(302);
+		expect(res.headers.get("Location")).toBe("/login?error=invalid_state");
+	});
+
+	it("토큰 교환 성공 + 사용자 정보 정상이면 쿠키 설정 후 /auth/callback 리다이렉트", async () => {
 		fetchSpy
 			.mockResolvedValueOnce(
 				new Response(JSON.stringify({ access_token: "naver-access" }), {
@@ -122,13 +183,19 @@ describe("authRoutes OAuth callback (naver)", () => {
 				),
 			);
 
-		const res = await authRoutes.request("/naver/callback?code=abc", {}, env);
+		const state = "valid-state";
+		const res = await authRoutes.request(
+			`/naver/callback?code=abc&state=${state}`,
+			{ headers: { Cookie: `meet2meet_oauth_state_naver=${state}` } },
+			env,
+		);
 
 		expect(res.status).toBe(302);
 		const location = res.headers.get("Location") ?? "";
-		expect(location.startsWith(`${env.BASE_URL}/auth/callback#token=`)).toBe(
-			true,
-		);
+		expect(location).toBe(`${env.BASE_URL}/auth/callback`);
+		const setCookie = res.headers.get("Set-Cookie") ?? "";
+		expect(setCookie.includes("meet2meet_auth=")).toBe(true);
+		expect(setCookie.includes("HttpOnly")).toBe(true);
 		expect(fetchSpy).toHaveBeenCalledTimes(2);
 	});
 
@@ -139,7 +206,12 @@ describe("authRoutes OAuth callback (naver)", () => {
 				headers: { "Content-Type": "application/json" },
 			}),
 		);
-		const res = await authRoutes.request("/naver/callback?code=abc", {}, env);
+		const state = "valid-state";
+		const res = await authRoutes.request(
+			`/naver/callback?code=abc&state=${state}`,
+			{ headers: { Cookie: `meet2meet_oauth_state_naver=${state}` } },
+			env,
+		);
 		expect(res.status).toBe(302);
 		expect(res.headers.get("Location")).toBe("/login?error=token_exchange");
 	});
@@ -148,5 +220,12 @@ describe("authRoutes OAuth callback (naver)", () => {
 		const res = await authRoutes.request("/unknown/callback?code=x", {}, env);
 		expect(res.status).toBe(302);
 		expect(res.headers.get("Location")).toBe("/login?error=auth_failed");
+	});
+
+	it("/logout은 인증 쿠키를 삭제한다", async () => {
+		const res = await authRoutes.request("/logout", { method: "POST" }, env);
+		expect(res.status).toBe(200);
+		const setCookie = res.headers.get("Set-Cookie") ?? "";
+		expect(setCookie.includes("meet2meet_auth=")).toBe(true);
 	});
 });

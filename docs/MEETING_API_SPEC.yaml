@@ -332,9 +332,9 @@ components:
       in: path
       required: true
       schema:
-        type: string
-        format: uuid
-      example: "550e8400-e29b-41d4-a716-446655440000"
+        type: integer
+        format: int32
+      example: 123456
 
     InviteCode:
       name: inviteCode
@@ -447,8 +447,8 @@ components:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
+          format: int32
         shortId:
           type: string
           description: 공유 URL용 짧은 ID
@@ -519,8 +519,8 @@ components:
       type: object
       properties:
         meetingId:
-          type: string
-          format: uuid
+          type: integer
+          format: int32
         userId:
           type: string
           description: 사용자 식별자
@@ -539,8 +539,8 @@ components:
       type: object
       properties:
         meetingId:
-          type: string
-          format: uuid
+          type: integer
+          format: int32
         votes:
           type: array
           items:

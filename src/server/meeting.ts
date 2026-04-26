@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { verify } from "hono/jwt";
 
 type Bindings = {
@@ -17,13 +18,15 @@ type AuthPayload = {
 };
 
 const DEFAULT_CORE_API_URL = "http://localhost:8080";
+const AUTH_COOKIE_NAME = "meet2meet_auth";
 
 export const meetingRoutes = new Hono<{ Bindings: Bindings }>();
 
 /**
  * `/api/meetings/*` 모든 요청을 Go Core API로 프록시.
- * - Authorization Bearer JWT를 BFF에서 검증
+ * - Authorization Bearer JWT 또는 HttpOnly 인증 쿠키를 BFF에서 검증
  * - 사용자 정보를 X-User-Id / X-User-Name 헤더로 전달
+ *   (X-User-Name은 헤더 제약 때문에 URL 인코딩 후 전달)
  * - 비인증이 허용되는 GET 엔드포인트(상세/공유/투표 조회)는 토큰이 없어도 통과
  */
 meetingRoutes.all("/*", async (c) => {
@@ -31,11 +34,13 @@ meetingRoutes.all("/*", async (c) => {
 
     // ── 인증 처리 ──
     const authHeader = c.req.header("Authorization");
+    const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
+    const bearerToken = getBearerToken(authHeader);
+    const token = bearerToken || cookieToken || "";
     let userId = "";
     let userName = "";
 
-    if (authHeader?.startsWith("Bearer ")) {
-        const token = authHeader.slice("Bearer ".length).trim();
+    if (token) {
         try {
             const payload = (await verify(
                 token,
@@ -76,7 +81,7 @@ meetingRoutes.all("/*", async (c) => {
     const accept = c.req.header("Accept");
     if (accept) headers.set("Accept", accept);
     if (userId) headers.set("X-User-Id", userId);
-    if (userName) headers.set("X-User-Name", userName);
+    if (userName) headers.set("X-User-Name", encodeURIComponent(userName));
 
     // ── 본문 (GET/HEAD 제외) ──
     let body: BodyInit | undefined;
@@ -115,3 +120,11 @@ meetingRoutes.all("/*", async (c) => {
         headers: responseHeaders,
     });
 });
+
+function getBearerToken(authorizationHeader?: string) {
+    if (!authorizationHeader?.startsWith("Bearer ")) {
+        return "";
+    }
+
+    return authorizationHeader.slice("Bearer ".length).trim();
+}

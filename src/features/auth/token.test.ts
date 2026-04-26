@@ -7,18 +7,7 @@ import {
 } from "./token";
 
 function createFakeWindow() {
-	const store = new Map<string, string>();
-	return {
-		localStorage: {
-			getItem: (k: string) => store.get(k) ?? null,
-			setItem: (k: string, v: string) => {
-				store.set(k, v);
-			},
-			removeItem: (k: string) => {
-				store.delete(k);
-			},
-		},
-	};
+	return {};
 }
 
 describe("token storage (with window)", () => {
@@ -30,29 +19,22 @@ describe("token storage (with window)", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("set/get/clear round-trip", () => {
+	it("HttpOnly 쿠키 환경에서는 get이 항상 null", () => {
 		expect(getStoredAuthToken()).toBeNull();
 		setStoredAuthToken("abc");
-		expect(getStoredAuthToken()).toBe("abc");
+		expect(getStoredAuthToken()).toBeNull();
 		clearStoredAuthToken();
 		expect(getStoredAuthToken()).toBeNull();
 	});
 
-	it("createAuthHeaders가 토큰이 있으면 Authorization을 부착한다", () => {
-		setStoredAuthToken("xyz");
+	it("createAuthHeaders는 Authorization을 부착하지 않는다", () => {
 		const headers = createAuthHeaders();
-		expect(headers.get("Authorization")).toBe("Bearer xyz");
+		expect(headers.get("Authorization")).toBeNull();
 	});
 
 	it("createAuthHeaders는 기존 헤더를 보존한다", () => {
-		setStoredAuthToken("xyz");
 		const headers = createAuthHeaders({ "Content-Type": "application/json" });
 		expect(headers.get("Content-Type")).toBe("application/json");
-		expect(headers.get("Authorization")).toBe("Bearer xyz");
-	});
-
-	it("토큰이 없으면 Authorization을 부착하지 않는다", () => {
-		const headers = createAuthHeaders();
 		expect(headers.get("Authorization")).toBeNull();
 	});
 });

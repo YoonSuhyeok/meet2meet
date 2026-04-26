@@ -1,8 +1,12 @@
-import { env } from "cloudflare:test";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { meetingRoutes } from "./meeting";
+
+const env = {
+	JWT_SECRET: "test-jwt-secret",
+	CORE_API_URL: "http://localhost:8080",
+};
 
 /** +server.ts와 동일하게 마운트한 테스트용 앱 */
 function buildApp() {
@@ -144,13 +148,43 @@ describe("meetingRoutes (BFF proxy)", () => {
 
 			const headers = new Headers(init.headers);
 			expect(headers.get("X-User-Id")).toBe("user-42");
-			expect(headers.get("X-User-Name")).toBe("테스터");
+			expect(headers.get("X-User-Name")).toBe(encodeURIComponent("테스터"));
 			expect(headers.get("Content-Type")).toBe("application/json");
 			expect(headers.get("Authorization")).toBeNull(); // 업스트림에 토큰을 흘리지 않음
 
 			const body = init.body as ArrayBuffer;
 			const text = new TextDecoder().decode(body);
 			expect(JSON.parse(text)).toEqual({ title: "회의" });
+		});
+
+		it("POST: Authorization 헤더 없이 쿠키 토큰으로도 인증된다", async () => {
+			fetchSpy.mockResolvedValue(
+				new Response(JSON.stringify({ id: "m-2" }), {
+					status: 201,
+					headers: { "Content-Type": "application/json" },
+				}),
+			);
+			const token = await makeToken({ sub: "cookie-user", name: "쿠키" });
+			const app = buildApp();
+
+			const res = await app.request(
+				"/api/meetings",
+				{
+					method: "POST",
+					headers: {
+						Cookie: `meet2meet_auth=${token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ title: "쿠키 회의" }),
+				},
+				env,
+			);
+
+			expect(res.status).toBe(201);
+			const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBe("cookie-user");
+			expect(headers.get("X-User-Name")).toBe(encodeURIComponent("쿠키"));
 		});
 
 		it("쿼리스트링을 보존한다", async () => {

@@ -1,4 +1,4 @@
-export { apiFetch, isStoredTokenExpired } from "./apiFetch";
+export { apiFetch } from "./apiFetch";
 export {
     clearStoredAuthToken,
     createAuthHeaders,
