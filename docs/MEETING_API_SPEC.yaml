@@ -7,8 +7,12 @@ info:
     Go Core API 서버 (Fly.io) 가 구현하며,
     Cloudflare Workers (Hono BFF) 가 `/api/*` 경로로 프록시한다.
 
-    **인증**: 클라이언트는 BFF에 `Authorization: Bearer <token>` 헤더로 인증한다.
-    BFF가 토큰을 검증한 뒤 `X-User-Id`, `X-User-Name` 헤더로 Go 서버에 전달한다.
+    **인증**:
+    - 기본: HttpOnly 쿠키(`meet2meet_auth`) 기반 세션
+    - 호환: `Authorization: Bearer <token>` 헤더도 허용
+
+    BFF가 토큰을 검증한 뒤 내부적으로 `X-User-Id`, `X-User-Name` 헤더를 Go 서버에 전달한다.
+    (`X-User-Name`은 헤더 안전성을 위해 URL 인코딩되어 전달되고 Go 미들웨어에서 디코딩됨)
 
 servers:
   - url: http://localhost:8080
@@ -36,6 +40,7 @@ paths:
         로그인 사용자가 생성했거나 참여(투표)한 미팅 목록을 반환한다.
         최신순 정렬, 커서 기반 페이지네이션.
       security:
+        - cookieAuth: []
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/Cursor"
@@ -61,6 +66,7 @@ paths:
         - `startTime` / `endTime`: `HH:mm`, 30분 단위
         - 서버에서 `shortId` (URL용) 와 `inviteCode` (초대 코드) 를 생성
       security:
+        - cookieAuth: []
         - bearerAuth: []
       requestBody:
         required: true
@@ -142,6 +148,7 @@ paths:
         변경할 필드만 전송 (partial update).
         - 날짜 변경 시 기존 투표가 무효화될 수 있음 → 참여자에게 알림
       security:
+        - cookieAuth: []
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/MeetingId"
@@ -173,6 +180,7 @@ paths:
       summary: 미팅 삭제
       description: 미팅 주최자만 삭제 가능. 관련 투표 데이터도 함께 삭제.
       security:
+        - cookieAuth: []
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/MeetingId"
@@ -263,6 +271,7 @@ paths:
         PUT — 기존 투표가 있으면 덮어쓰기 (upsert).
         슬롯 키 형식: `"YYYY-MM-DD-HH:mm"` (예: `"2026-04-20-09:00"`)
       security:
+        - cookieAuth: []
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/MeetingId"
@@ -299,6 +308,7 @@ paths:
       summary: 내 투표 삭제
       description: 참여자가 자신의 투표를 철회한다.
       security:
+        - cookieAuth: []
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/MeetingId"
@@ -316,12 +326,22 @@ paths:
 components:
   # ── Security ──
   securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: meet2meet_auth
+      description: |
+        기본 인증 방식.
+        OAuth 콜백 성공 시 BFF가 HttpOnly 쿠키를 설정하며,
+        브라우저는 same-origin 요청에서 쿠키를 자동 전송한다.
+
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
       description: |
-        클라이언트는 BFF에 `Authorization: Bearer <token>` 헤더를 보낸다.
+        호환용 인증 방식.
+        클라이언트가 `Authorization: Bearer <token>` 헤더를 보내면
         BFF가 JWT 토큰을 검증 후 `X-User-Id` / `X-User-Name` 헤더로 전달한다.
         Go 서버는 이 헤더를 신뢰한다 (내부 네트워크 통신).
 
