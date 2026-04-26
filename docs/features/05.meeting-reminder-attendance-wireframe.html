@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet2Meet - Meeting Reminder & Attendance Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas: #1a1a2e;
+      --surface: #16213e;
+      --accent: #e94560;
+      --accent-soft: rgba(233, 69, 96, 0.15);
+      --text: #eee;
+      --text-dim: #8892a4;
+      --text-muted: #5a6377;
+      --border: #2a3a5c;
+      --wire-bg: #f8f9fb;
+      --wire-border: #e2e5ea;
+      --wire-text: #1a1a1a;
+      --wire-dim: #6b7280;
+      --green: #34d399;
+      --blue: #60a5fa;
+      --yellow: #fbbf24;
+      --purple: #a78bfa;
+      --orange: #fb923c;
+    }
+
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--canvas);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(26, 26, 46, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-left { display: flex; align-items: center; gap: 16px; }
+    .toolbar-title { font-size: 14px; font-weight: 600; }
+    .toolbar-breadcrumb { font-size: 12px; color: var(--text-dim); }
+    .toolbar-actions { display: flex; gap: 8px; }
+
+    .toolbar-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .toolbar-btn:hover { color: var(--text); border-color: var(--text-dim); }
+    .toolbar-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .doc-section { max-width: 1280px; margin: 0 auto; padding: 48px 32px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+
+    .section-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .section-title { font-size: 18px; font-weight: 700; }
+    .section-divider { border: none; border-top: 1px solid var(--border); }
+
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+    .info-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
+    .info-card-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .info-card-desc { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+    .flow-container { display: flex; align-items: center; overflow-x: auto; padding: 8px 0; }
+    .flow-node { padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .flow-sub { font-size: 11px; opacity: .65; margin-top: 2px; }
+    .flow-arrow { color: var(--text-muted); font-size: 18px; padding: 0 8px; }
+
+    .screen-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      margin-bottom: 48px;
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .screen-row.reverse { grid-template-columns: 1fr auto; }
+    .screen-row.reverse .screen-wireframe { order: 2; }
+    .screen-row.reverse .annotation-panel { order: 1; border-left: none; border-right: 1px solid var(--border); }
+
+    .screen-wireframe { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .screen-tag { align-self: flex-start; font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+
+    .device-frame {
+      background: var(--wire-bg);
+      border-radius: 16px;
+      border: 2px solid var(--wire-border);
+      overflow: hidden;
+      width: 520px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .device-frame.narrow { width: 360px; }
+
+    .device-chrome {
+      background: #fff;
+      border-bottom: 1px solid var(--wire-border);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chrome-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wire-border); }
+    .chrome-url { flex: 1; background: #f3f4f6; border-radius: 4px; padding: 3px 8px; font-size: 10px; color: var(--wire-dim); font-family: monospace; }
+
+    .wire-content { padding: 22px; color: var(--wire-text); position: relative; }
+    .wire-title { font-size: 20px; font-weight: 700; color: var(--wire-text); }
+    .wire-sub { font-size: 12px; color: var(--wire-dim); }
+
+    .wire-card {
+      margin-top: 12px;
+      border: 1px solid var(--wire-border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px 12px;
+    }
+
+    .wire-card-title { font-size: 12px; font-weight: 600; color: var(--wire-text); margin-bottom: 6px; }
+    .wire-list { display: grid; gap: 8px; }
+
+    .wire-row {
+      border: 1px solid #e9ecf2;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--wire-text);
+      background: #fcfdff;
+    }
+
+    .wire-row.selected { border-color: rgba(96, 165, 250, 0.55); background: rgba(96, 165, 250, 0.12); }
+    .wire-row.warn { border-color: rgba(251, 146, 60, 0.5); background: rgba(251, 146, 60, 0.08); }
+
+    .wire-chip { border: 1px solid var(--wire-border); border-radius: 999px; font-size: 11px; color: var(--wire-dim); padding: 2px 8px; background: #fff; }
+    .wire-chip.success { color: #059669; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08); }
+    .wire-chip.warning { color: #c2410c; border-color: rgba(251, 146, 60, 0.35); background: rgba(251, 146, 60, 0.08); }
+
+    .wire-note {
+      font-size: 11px;
+      color: #7a8398;
+      margin-top: 8px;
+      line-height: 1.55;
+    }
+
+    .wire-actions { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .wire-btn-primary {
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #111827;
+      color: #fff;
+      text-align: center;
+    }
+
+    .wire-btn-secondary {
+      border: 1px solid var(--wire-border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      background: #fff;
+      color: var(--wire-text);
+      text-align: center;
+    }
+
+    .annotation-panel { border-left: 1px solid var(--border); padding: 24px; width: 360px; }
+    .annotation-panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    .annotation-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 8px;
+      border-radius: 6px;
+      border-bottom: 1px solid rgba(42, 58, 92, 0.45);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .annotation-item:last-child { border-bottom: none; }
+    .annotation-item:hover { background: rgba(233, 69, 96, 0.08); }
+    .annotation-item.highlight { background: var(--accent-soft); }
+
+    .annotation-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .annotation-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .annotation-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+    .annotation-desc code { background: rgba(96, 165, 250, 0.16); color: var(--blue); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+    .callout-marker {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.3);
+      transition: transform 0.15s;
+    }
+
+    .callout-marker:hover { transform: scale(1.12); }
+    .callout-marker.active { box-shadow: 0 0 0 5px rgba(233, 69, 96, 0.55); }
+
+    .model-table, .api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .model-table th, .api-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    .model-table td, .api-table td { padding: 10px 16px; color: var(--text-dim); border-bottom: 1px solid rgba(42, 58, 92, 0.4); }
+    .model-table tr:last-child td, .api-table tr:last-child td { border-bottom: none; }
+
+    .model-field { font-family: monospace; font-size: 12px; color: var(--text); }
+    .model-type { font-family: monospace; font-size: 11px; color: var(--purple); }
+
+    .edge-item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(42, 58, 92, 0.4); }
+    .edge-item:last-child { border-bottom: none; }
+    .edge-code { font-family: monospace; font-size: 11px; font-weight: 600; background: rgba(96, 165, 250, 0.1); color: var(--blue); padding: 2px 8px; border-radius: 4px; height: fit-content; }
+    .edge-text { font-size: 13px; color: var(--text-dim); }
+    .edge-text strong { color: var(--text); }
+
+    .status-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-muted); }
+
+    .annotations-hidden .callout-marker { display: none !important; }
+    .annotations-hidden .annotation-panel { display: none !important; }
+    .annotations-hidden .screen-row,
+    .annotations-hidden .screen-row.reverse { grid-template-columns: 1fr; }
+
+    @media (max-width: 900px) {
+      .screen-row, .screen-row.reverse { grid-template-columns: 1fr; }
+      .screen-row.reverse .screen-wireframe { order: 1; }
+      .screen-row.reverse .annotation-panel { order: 2; border-right: none; border-left: none; border-top: 1px solid var(--border); }
+      .annotation-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+      .device-frame, .device-frame.narrow { width: 100%; max-width: 520px; }
+    }
+
+    .flash-highlight { animation: flash 1.5s ease; }
+    @keyframes flash {
+      0% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(233, 69, 96, 0.15); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+  </style>
+</head>
+<body id="doc-body">
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-title">Meet2Meet</div>
+      <div class="toolbar-breadcrumb">Features / Meeting / Reminder & Attendance - Wireframe</div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="toolbar-btn active" id="btn-annotations" onclick="toggleAnnotations()">Annotations</button>
+      <button class="toolbar-btn" onclick="scrollToSection('data-section')">Data Model</button>
+      <button class="toolbar-btn" onclick="scrollToSection('api-section')">API Spec</button>
+      <button class="toolbar-btn" onclick="scrollToSection('edge-section')">Edge Cases</button>
+    </div>
+  </div>
+
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">0</div>
+      <div class="section-title">Feature Brief</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-label">Route</div>
+        <div class="info-card-value" style="font-family: monospace;">/meeting/{id}/attendance</div>
+        <div class="info-card-desc">확정 이후 리마인드 발송 + 참석 의사 확인 전용 단계</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Primary Job</div>
+        <div class="info-card-value">당일 노쇼 리스크 줄이기</div>
+        <div class="info-card-desc">리마인드 메시지와 응답 상태를 한 화면에서 운영</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Entry</div>
+        <div class="info-card-value">Finalize 완료 후 운영 액션</div>
+        <div class="info-card-desc">/meeting/{id}/result 상단의 "참석 확인" CTA에서 진입</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Core Widgets</div>
+        <div class="info-card-value">리마인드 시나리오 + Ack 보드</div>
+        <div class="info-card-desc">발송 타이밍, 메세지, 응답 현황을 빠르게 컨트롤</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <div class="section-title">User Flow</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; overflow-x: auto;">
+      <div class="flow-container">
+        <div class="flow-node" style="background: rgba(96,165,250,0.12); color: var(--blue);">Finalize 완료<div class="flow-sub">최종 일정 잠금</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(251,191,36,0.12); color: var(--yellow);">리마인드 작성<div class="flow-sub">템플릿 + 발송시점 선택</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.14); color: var(--green);">POST /reminders<div class="flow-sub">비동기 발송 큐 등록</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(251,146,60,0.12); color: var(--orange);">참여자 Ack<div class="flow-sub">확정/지각/불참 선택</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(168,85,247,0.12); color: var(--purple);">운영 대시보드<div class="flow-sub">미응답자 추적 및 재발송</div></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <div class="section-title">Screen Design</div>
+    </div>
+
+    <div class="screen-row">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 01 - Host Reminder Composer & Attendance Board</div>
+        <div class="device-frame">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/meeting/550e84.../attendance</div>
+          </div>
+          <div class="wire-content">
+            <span class="callout-marker" style="top:58px;right:12px" data-note="1" onclick="highlightNote(1)">1</span>
+            <h1 class="wire-title">당일 참석 확인 운영</h1>
+            <p class="wire-sub">최종 일정 4/24 (목) 19:00 · 응답 6/7 · 미응답 1명</p>
+
+            <div class="wire-card" style="margin-top: 14px;">
+              <span class="callout-marker" style="top:136px;left:8px" data-note="2" onclick="highlightNote(2)">2</span>
+              <div class="wire-card-title">리마인드 메시지</div>
+              <div style="border:1px solid var(--wire-border); border-radius:8px; padding:10px; font-size:12px; color:var(--wire-dim); background:#fff; line-height:1.55;">
+                오늘 19:00 강남역 회식입니다. 참석 가능 여부를 버튼으로 알려주세요. 미응답자는 16:00에 한 번 더 안내됩니다.
+              </div>
+              <p class="wire-note">기본 템플릿은 meeting title, finalized slot, location을 merge tag로 자동 삽입합니다.</p>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:272px;right:12px" data-note="3" onclick="highlightNote(3)">3</span>
+              <div class="wire-card-title">발송 시나리오</div>
+              <div class="wire-list">
+                <div class="wire-row selected"><span>지금 즉시 발송</span><span class="wire-chip success">Queue Ready</span></div>
+                <div class="wire-row"><span>행사 3시간 전 자동 발송</span><span class="wire-chip">12:00</span></div>
+                <div class="wire-row warn"><span>미응답자 자동 재발송</span><span class="wire-chip warning">16:00</span></div>
+              </div>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:408px;left:8px" data-note="4" onclick="highlightNote(4)">4</span>
+              <div class="wire-card-title">참석 확인 보드</div>
+              <div class="wire-list">
+                <div class="wire-row"><span>참석 확정</span><span class="wire-chip success">4명</span></div>
+                <div class="wire-row"><span>지각 예정</span><span class="wire-chip">2명</span></div>
+                <div class="wire-row"><span>미응답</span><span class="wire-chip warning">1명</span></div>
+              </div>
+            </div>
+
+            <div class="wire-actions">
+              <span class="callout-marker" style="top:536px;right:12px" data-note="5" onclick="highlightNote(5)">5</span>
+              <div class="wire-btn-secondary">미리보기 링크</div>
+              <div class="wire-btn-primary">리마인드 발송</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+
+        <div class="annotation-item" id="note-1">
+          <div class="annotation-num">1</div>
+          <div>
+            <div class="annotation-title">운영 전용 헤더</div>
+            <div class="annotation-desc">당일 응답률을 가장 먼저 보여줘서 주최자가 즉시 상황을 파악하게 합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-2">
+          <div class="annotation-num">2</div>
+          <div>
+            <div class="annotation-title">템플릿 메시지 편집</div>
+            <div class="annotation-desc">확정 정보와 함께 참석 회신 CTA를 넣고, 서버에는 <code>messageBody</code>로 저장합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-3">
+          <div class="annotation-num">3</div>
+          <div>
+            <div class="annotation-title">발송 타이밍 옵션</div>
+            <div class="annotation-desc">즉시/예약/미응답 재발송 정책을 한 블록에서 선택하게 구성합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-4">
+          <div class="annotation-num">4</div>
+          <div>
+            <div class="annotation-title">Ack 집계 보드</div>
+            <div class="annotation-desc">확정, 지각, 미응답을 요약해 노쇼 가능성을 빠르게 추적합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-5">
+          <div class="annotation-num">5</div>
+          <div>
+            <div class="annotation-title">발송 CTA</div>
+            <div class="annotation-desc">클릭 시 <code>POST /api/meetings/{id}/reminders</code> 호출, 성공하면 dispatch 상태를 폴링합니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen-row reverse">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 02 - Participant Ack Sheet</div>
+        <div class="device-frame narrow">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/m/abc1234/ack</div>
+          </div>
+          <div class="wire-content" style="padding: 20px;">
+            <span class="callout-marker" style="top:54px;right:8px" data-note="6" onclick="highlightNote(6)">6</span>
+            <h2 style="font-size:18px; font-weight:700; color: var(--wire-text);">오늘 회식 참석 가능할까요?</h2>
+            <p class="wire-sub" style="margin-top: 4px;">4/24 (목) 19:00 - 20:30 · 강남역 인근</p>
+
+            <div class="wire-card" style="margin-top: 12px;">
+              <span class="callout-marker" style="top:152px;left:8px" data-note="7" onclick="highlightNote(7)">7</span>
+              <div class="wire-card-title">응답 선택</div>
+              <div class="wire-list">
+                <div class="wire-row selected"><span>참석 가능</span><span class="wire-chip success">default</span></div>
+                <div class="wire-row"><span>조금 늦어요 (10~20분)</span><span class="wire-chip">late</span></div>
+                <div class="wire-row"><span>이번엔 불참</span><span class="wire-chip warning">absent</span></div>
+              </div>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:276px;right:8px" data-note="8" onclick="highlightNote(8)">8</span>
+              <div class="wire-card-title">메모 (선택)</div>
+              <div style="border:1px solid var(--wire-border); border-radius:8px; padding:10px; font-size:12px; color:var(--wire-dim); background:#fff;">
+                예) 19:15쯤 도착 가능, 자리 남겨주세요.
+              </div>
+            </div>
+
+            <div class="wire-actions" style="grid-template-columns: 1fr;">
+              <span class="callout-marker" style="top:398px;left:8px" data-note="9" onclick="highlightNote(9)">9</span>
+              <div class="wire-btn-primary">응답 제출</div>
+              <div class="wire-btn-secondary">캘린더 일정 보기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+
+        <div class="annotation-item" id="note-6">
+          <div class="annotation-num">6</div>
+          <div>
+            <div class="annotation-title">요청 맥락 강조</div>
+            <div class="annotation-desc">사용자가 링크 진입 즉시 어떤 약속인지, 언제인지를 확인하도록 상단 정보 밀도를 높입니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-7">
+          <div class="annotation-num">7</div>
+          <div>
+            <div class="annotation-title">3단계 Ack 선택</div>
+            <div class="annotation-desc">가능/지각/불참을 단일 탭 그룹으로 단순화해 모바일에서 빠르게 입력하게 합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-8">
+          <div class="annotation-num">8</div>
+          <div>
+            <div class="annotation-title">상황 메모 입력</div>
+            <div class="annotation-desc">지각 사유나 도착 예상 시간을 남기게 해 주최자의 현장 대응 품질을 높입니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-9">
+          <div class="annotation-num">9</div>
+          <div>
+            <div class="annotation-title">응답 제출 액션</div>
+            <div class="annotation-desc">제출 시 <code>POST /api/meetings/{id}/attendance/ack</code> 호출, 성공 시 토스트와 상태 배지를 보여줍니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="data-section">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <div class="section-title">Data Model</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">CreateReminderRequest</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">messageBody</span></td><td><span class="model-type">string</span></td><td>리마인드 본문 (merge tag 포함 가능)</td></tr>
+          <tr><td><span class="model-field">sendMode</span></td><td><span class="model-type">"now" | "scheduled"</span></td><td>즉시/예약 발송 모드</td></tr>
+          <tr><td><span class="model-field">scheduledAt</span></td><td><span class="model-type">string (ISO)</span></td><td>예약 발송 시각</td></tr>
+          <tr><td><span class="model-field">retryForNoAckAt</span></td><td><span class="model-type">string (ISO)</span></td><td>미응답자 재발송 시각</td></tr>
+          <tr><td><span class="model-field">includeCalendarLink</span></td><td><span class="model-type">boolean</span></td><td>캘린더 링크 포함 여부</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">AttendanceAckRequest</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">reminderId</span></td><td><span class="model-type">string</span></td><td>응답 대상 리마인드 식별자</td></tr>
+          <tr><td><span class="model-field">status</span></td><td><span class="model-type">"confirmed" | "late" | "absent"</span></td><td>참석 상태</td></tr>
+          <tr><td><span class="model-field">note</span></td><td><span class="model-type">string</span></td><td>지각 사유/메모 (선택)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">ReminderDispatchResponse</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">reminderId</span></td><td><span class="model-type">string</span></td><td>리마인드 작업 ID</td></tr>
+          <tr><td><span class="model-field">meetingId</span></td><td><span class="model-type">string</span></td><td>미팅 ID</td></tr>
+          <tr><td><span class="model-field">status</span></td><td><span class="model-type">"queued" | "sent" | "partial_failed"</span></td><td>발송 처리 상태</td></tr>
+          <tr><td><span class="model-field">ackSummary</span></td><td><span class="model-type">{ confirmed, late, absent, pending }</span></td><td>현재 참석 응답 집계</td></tr>
+          <tr><td><span class="model-field">lastUpdatedAt</span></td><td><span class="model-type">string (ISO)</span></td><td>마지막 상태 갱신 시각</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="api-section">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <div class="section-title">API Endpoints</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Path</th><th>설명</th><th>응답</th></tr></thead>
+        <tbody>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/reminders</span></td><td>리마인드 생성/발송 큐 등록</td><td>202 / 400 / 409</td></tr>
+          <tr><td>GET</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/attendance/summary</span></td><td>Ack 집계 조회 (주최자)</td><td>200 / 404</td></tr>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/attendance/ack</span></td><td>참여자 참석 응답 제출</td><td>200 / 400 / 410</td></tr>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/reminders/{reminderId}/retry</span></td><td>실패 대상 재발송</td><td>202 / 404</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="edge-section">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <div class="section-title">Edge Cases and Policy</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div class="edge-item"><span class="edge-code">E1</span><div class="edge-text"><strong>중복 발송 클릭</strong> -> 같은 payload 해시로 30초 내 재요청 시 409 및 기존 reminderId 반환</div></div>
+      <div class="edge-item"><span class="edge-code">E2</span><div class="edge-text"><strong>부분 발송 실패</strong> -> 실패 대상만 retry 큐에 적재하고 상태는 <code>partial_failed</code>로 유지</div></div>
+      <div class="edge-item"><span class="edge-code">E3</span><div class="edge-text"><strong>행사 시작 이후 Ack 제출</strong> -> 410 응답, 읽기 전용 결과 화면으로 전환</div></div>
+      <div class="edge-item"><span class="edge-code">E4</span><div class="edge-text"><strong>이미 불참 응답 후 변경</strong> -> 행사 시작 전까지만 상태 변경 허용, 이력 로그 기록</div></div>
+      <div class="edge-item"><span class="edge-code">E5</span><div class="edge-text"><strong>미응답자 과다</strong> -> 임계치(30%) 초과 시 주최자에게 장소/시간 재안내 CTA 노출</div></div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" style="padding-bottom: 80px;">
+    <div class="section-header">
+      <div class="section-number">6</div>
+      <div class="section-title">Implementation Status (Reminder & Attendance)</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px;">
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> /meeting/{id}/attendance 라우트 추가</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 리마인드 메시지 템플릿/예약 발송 폼</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> POST /reminders 비동기 큐 연결</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 참여자 Ack 화면 + 상태 제출 API 연동</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 참석 집계 요약 보드 및 미응답자 필터</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 중복 발송/부분 실패/마감 후 응답 정책 처리</div>
+    </div>
+  </div>
+
+  <script>
+    function highlightNote(num) {
+      document.querySelectorAll(".annotation-item.highlight").forEach((el) => el.classList.remove("highlight"));
+      document.querySelectorAll(".callout-marker.active").forEach((el) => el.classList.remove("active"));
+
+      const note = document.getElementById("note-" + num);
+      const marker = document.querySelector('.callout-marker[data-note="' + num + '"]');
+
+      if (note) {
+        note.classList.add("highlight");
+        note.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      if (marker) marker.classList.add("active");
+
+      setTimeout(() => {
+        if (note) note.classList.remove("highlight");
+        if (marker) marker.classList.remove("active");
+      }, 3000);
+    }
+
+    function toggleAnnotations() {
+      const body = document.getElementById("doc-body");
+      const btn = document.getElementById("btn-annotations");
+      body.classList.toggle("annotations-hidden");
+      btn.classList.toggle("active");
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("flash-highlight");
+      setTimeout(() => el.classList.remove("flash-highlight"), 1500);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet2Meet - Mobile RSVP Quick Flow Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas: #1a1a2e;
+      --surface: #16213e;
+      --accent: #e94560;
+      --accent-soft: rgba(233, 69, 96, 0.15);
+      --text: #eee;
+      --text-dim: #8892a4;
+      --text-muted: #5a6377;
+      --border: #2a3a5c;
+      --wire-bg: #f8f9fb;
+      --wire-border: #e2e5ea;
+      --wire-text: #1a1a1a;
+      --wire-dim: #6b7280;
+      --green: #34d399;
+      --blue: #60a5fa;
+      --yellow: #fbbf24;
+      --purple: #a78bfa;
+      --orange: #fb923c;
+    }
+
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--canvas);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(26, 26, 46, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-left { display: flex; align-items: center; gap: 16px; }
+    .toolbar-title { font-size: 14px; font-weight: 600; }
+    .toolbar-breadcrumb { font-size: 12px; color: var(--text-dim); }
+    .toolbar-actions { display: flex; gap: 8px; }
+
+    .toolbar-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .toolbar-btn:hover { color: var(--text); border-color: var(--text-dim); }
+    .toolbar-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .doc-section { max-width: 1280px; margin: 0 auto; padding: 48px 32px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+
+    .section-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .section-title { font-size: 18px; font-weight: 700; }
+    .section-divider { border: none; border-top: 1px solid var(--border); }
+
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+    .info-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
+    .info-card-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .info-card-desc { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+    .flow-container { display: flex; align-items: center; overflow-x: auto; padding: 8px 0; }
+    .flow-node { padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .flow-sub { font-size: 11px; opacity: .65; margin-top: 2px; }
+    .flow-arrow { color: var(--text-muted); font-size: 18px; padding: 0 8px; }
+
+    .screen-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      margin-bottom: 48px;
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .screen-row.reverse { grid-template-columns: 1fr auto; }
+    .screen-row.reverse .screen-wireframe { order: 2; }
+    .screen-row.reverse .annotation-panel { order: 1; border-left: none; border-right: 1px solid var(--border); }
+
+    .screen-wireframe { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .screen-tag { align-self: flex-start; font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+
+    .device-frame {
+      background: var(--wire-bg);
+      border-radius: 16px;
+      border: 2px solid var(--wire-border);
+      overflow: hidden;
+      width: 520px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .device-frame.narrow { width: 360px; }
+
+    .device-chrome {
+      background: #fff;
+      border-bottom: 1px solid var(--wire-border);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chrome-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wire-border); }
+    .chrome-url { flex: 1; background: #f3f4f6; border-radius: 4px; padding: 3px 8px; font-size: 10px; color: var(--wire-dim); font-family: monospace; }
+
+    .wire-content { padding: 22px; color: var(--wire-text); position: relative; }
+    .wire-title { font-size: 20px; font-weight: 700; color: var(--wire-text); }
+    .wire-sub { font-size: 12px; color: var(--wire-dim); }
+
+    .wire-card {
+      margin-top: 12px;
+      border: 1px solid var(--wire-border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px 12px;
+    }
+
+    .wire-card-title { font-size: 12px; font-weight: 600; color: var(--wire-text); margin-bottom: 6px; }
+    .wire-list { display: grid; gap: 8px; }
+
+    .wire-row {
+      border: 1px solid #e9ecf2;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--wire-text);
+      background: #fcfdff;
+    }
+
+    .wire-row.selected { border-color: rgba(96, 165, 250, 0.55); background: rgba(96, 165, 250, 0.12); }
+    .wire-row.success { border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.08); }
+    .wire-row.warn { border-color: rgba(251, 146, 60, 0.5); background: rgba(251, 146, 60, 0.08); }
+
+    .wire-chip { border: 1px solid var(--wire-border); border-radius: 999px; font-size: 11px; color: var(--wire-dim); padding: 2px 8px; background: #fff; }
+    .wire-chip.success { color: #059669; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08); }
+    .wire-chip.warning { color: #c2410c; border-color: rgba(251, 146, 60, 0.35); background: rgba(251, 146, 60, 0.08); }
+
+    .wire-note {
+      font-size: 11px;
+      color: #7a8398;
+      margin-top: 8px;
+      line-height: 1.55;
+    }
+
+    .wire-actions { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .wire-btn-primary {
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #111827;
+      color: #fff;
+      text-align: center;
+    }
+
+    .wire-btn-secondary {
+      border: 1px solid var(--wire-border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      background: #fff;
+      color: var(--wire-text);
+      text-align: center;
+    }
+
+    .annotation-panel { border-left: 1px solid var(--border); padding: 24px; width: 360px; }
+    .annotation-panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    .annotation-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 8px;
+      border-radius: 6px;
+      border-bottom: 1px solid rgba(42, 58, 92, 0.45);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .annotation-item:last-child { border-bottom: none; }
+    .annotation-item:hover { background: rgba(233, 69, 96, 0.08); }
+    .annotation-item.highlight { background: var(--accent-soft); }
+
+    .annotation-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .annotation-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .annotation-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+    .annotation-desc code { background: rgba(96, 165, 250, 0.16); color: var(--blue); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+    .callout-marker {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.3);
+      transition: transform 0.15s;
+    }
+
+    .callout-marker:hover { transform: scale(1.12); }
+    .callout-marker.active { box-shadow: 0 0 0 5px rgba(233, 69, 96, 0.55); }
+
+    .model-table, .api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .model-table th, .api-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    .model-table td, .api-table td { padding: 10px 16px; color: var(--text-dim); border-bottom: 1px solid rgba(42, 58, 92, 0.4); }
+    .model-table tr:last-child td, .api-table tr:last-child td { border-bottom: none; }
+
+    .model-field { font-family: monospace; font-size: 12px; color: var(--text); }
+    .model-type { font-family: monospace; font-size: 11px; color: var(--purple); }
+
+    .edge-item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(42, 58, 92, 0.4); }
+    .edge-item:last-child { border-bottom: none; }
+    .edge-code { font-family: monospace; font-size: 11px; font-weight: 600; background: rgba(96, 165, 250, 0.1); color: var(--blue); padding: 2px 8px; border-radius: 4px; height: fit-content; }
+    .edge-text { font-size: 13px; color: var(--text-dim); }
+    .edge-text strong { color: var(--text); }
+
+    .status-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-muted); }
+
+    .annotations-hidden .callout-marker { display: none !important; }
+    .annotations-hidden .annotation-panel { display: none !important; }
+    .annotations-hidden .screen-row,
+    .annotations-hidden .screen-row.reverse { grid-template-columns: 1fr; }
+
+    @media (max-width: 900px) {
+      .screen-row, .screen-row.reverse { grid-template-columns: 1fr; }
+      .screen-row.reverse .screen-wireframe { order: 1; }
+      .screen-row.reverse .annotation-panel { order: 2; border-right: none; border-left: none; border-top: 1px solid var(--border); }
+      .annotation-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+      .device-frame, .device-frame.narrow { width: 100%; max-width: 520px; }
+    }
+
+    .flash-highlight { animation: flash 1.5s ease; }
+    @keyframes flash {
+      0% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(233, 69, 96, 0.15); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+  </style>
+</head>
+<body id="doc-body">
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-title">Meet2Meet</div>
+      <div class="toolbar-breadcrumb">Features / Meeting / Mobile RSVP Quick Flow - Wireframe</div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="toolbar-btn active" id="btn-annotations" onclick="toggleAnnotations()">Annotations</button>
+      <button class="toolbar-btn" onclick="scrollToSection('data-section')">Data Model</button>
+      <button class="toolbar-btn" onclick="scrollToSection('api-section')">API Spec</button>
+      <button class="toolbar-btn" onclick="scrollToSection('edge-section')">Edge Cases</button>
+    </div>
+  </div>
+
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">0</div>
+      <div class="section-title">Feature Brief</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-label">Route</div>
+        <div class="info-card-value" style="font-family: monospace;">/m/{shortId}/rsvp</div>
+        <div class="info-card-desc">모바일 링크 기반 1탭 RSVP 입력 전용 단계</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Primary Job</div>
+        <div class="info-card-value">10초 내 참석 의사 수집</div>
+        <div class="info-card-desc">긴 폼 없이 참석/지각/불참을 즉시 제출</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Entry</div>
+        <div class="info-card-value">리마인드 메시지 링크</div>
+        <div class="info-card-desc">SMS/메신저에서 링크 탭 후 즉시 진입</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Core Widgets</div>
+        <div class="info-card-value">3버튼 RSVP + 스티키 제출</div>
+        <div class="info-card-desc">상태 선택, 선택 메모, 즉시 제출/되돌리기</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" style="padding-bottom: 24px;">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <div class="section-title">User Flow</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; overflow-x: auto;">
+      <div class="flow-container">
+        <div class="flow-node" style="background: rgba(96,165,250,0.12); color: var(--blue);">리마인드 링크 탭<div class="flow-sub">모바일 deep link 진입</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(251,191,36,0.12); color: var(--yellow);">RSVP 1탭 선택<div class="flow-sub">가능/지각/불참</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(52,211,153,0.14); color: var(--green);">POST /rsvp/quick<div class="flow-sub">응답 즉시 저장</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(251,146,60,0.12); color: var(--orange);">성공 피드백<div class="flow-sub">Undo 10분 허용</div></div>
+        <div class="flow-arrow">-&gt;</div>
+        <div class="flow-node" style="background: rgba(168,85,247,0.12); color: var(--purple);">호스트 보드 반영<div class="flow-sub">미응답 수 자동 갱신</div></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <div class="section-title">Screen Design</div>
+    </div>
+
+    <div class="screen-row">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 01 - Participant Mobile Quick RSVP</div>
+        <div class="device-frame narrow">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/m/abc1234/rsvp</div>
+          </div>
+          <div class="wire-content" style="padding:20px;">
+            <span class="callout-marker" style="top:52px;right:8px" data-note="1" onclick="highlightNote(1)">1</span>
+            <h2 style="font-size:18px; font-weight:700; color: var(--wire-text);">오늘 19:00 회식 참석할 수 있나요?</h2>
+            <p class="wire-sub" style="margin-top:4px;">강남역 인근 · 응답 예상 10초</p>
+
+            <div class="wire-card" style="margin-top: 12px;">
+              <span class="callout-marker" style="top:148px;left:8px" data-note="2" onclick="highlightNote(2)">2</span>
+              <div class="wire-card-title">빠른 선택</div>
+              <div class="wire-list">
+                <div class="wire-row selected"><span>참석 가능</span><span class="wire-chip success">default</span></div>
+                <div class="wire-row"><span>10~20분 늦을 것 같아요</span><span class="wire-chip">late</span></div>
+                <div class="wire-row warn"><span>이번엔 참석 어려워요</span><span class="wire-chip warning">decline</span></div>
+              </div>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:272px;right:8px" data-note="3" onclick="highlightNote(3)">3</span>
+              <div class="wire-card-title">메모 (선택)</div>
+              <div style="border:1px solid var(--wire-border); border-radius:8px; padding:10px; font-size:12px; color:var(--wire-dim); background:#fff;">
+                예) 19:20 도착 예정, 먼저 시작해도 돼요.
+              </div>
+              <p class="wire-note">입력하지 않아도 제출 가능. 키보드가 올라와도 하단 CTA는 고정됩니다.</p>
+            </div>
+
+            <div class="wire-actions" style="grid-template-columns: 1fr; margin-top: 12px;">
+              <span class="callout-marker" style="top:404px;left:8px" data-note="4" onclick="highlightNote(4)">4</span>
+              <div class="wire-btn-primary">응답 제출</div>
+              <div class="wire-btn-secondary">나중에 다시 응답</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+
+        <div class="annotation-item" id="note-1">
+          <div class="annotation-num">1</div>
+          <div>
+            <div class="annotation-title">초기 정보 최소화</div>
+            <div class="annotation-desc">핵심 정보(시간/장소/걸리는 시간)만 먼저 보여줘 즉시 선택을 유도합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-2">
+          <div class="annotation-num">2</div>
+          <div>
+            <div class="annotation-title">3상태 1탭 선택</div>
+            <div class="annotation-desc">가능/지각/불참만 제공해 의사결정 부담을 줄이고 서버에는 <code>status</code>로 저장합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-3">
+          <div class="annotation-num">3</div>
+          <div>
+            <div class="annotation-title">선택 메모 입력</div>
+            <div class="annotation-desc">메모는 선택값이며, 미입력 시 빈 문자열로 전송되어 제출 흐름을 막지 않습니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-4">
+          <div class="annotation-num">4</div>
+          <div>
+            <div class="annotation-title">스티키 CTA</div>
+            <div class="annotation-desc">클릭 시 <code>POST /api/meetings/{id}/rsvp/quick</code> 호출, 성공하면 undo 윈도우를 노출합니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen-row reverse">
+      <div class="screen-wireframe">
+        <div class="screen-tag">Screen 02 - Host Live RSVP Snapshot</div>
+        <div class="device-frame">
+          <div class="device-chrome">
+            <div class="chrome-dot"></div><div class="chrome-dot"></div><div class="chrome-dot"></div>
+            <div class="chrome-url">meet2meet.app/meeting/550e84.../ops/rsvp</div>
+          </div>
+          <div class="wire-content">
+            <span class="callout-marker" style="top:58px;right:12px" data-note="5" onclick="highlightNote(5)">5</span>
+            <h1 class="wire-title">모바일 RSVP 실시간 현황</h1>
+            <p class="wire-sub">응답 14/18 · 미응답 4 · 최근 5분 응답률 +22%</p>
+
+            <div class="wire-card" style="margin-top: 14px;">
+              <span class="callout-marker" style="top:136px;left:8px" data-note="6" onclick="highlightNote(6)">6</span>
+              <div class="wire-card-title">상태 집계</div>
+              <div class="wire-list">
+                <div class="wire-row success"><span>참석 가능</span><span class="wire-chip success">9명</span></div>
+                <div class="wire-row"><span>지각 예정</span><span class="wire-chip">5명</span></div>
+                <div class="wire-row warn"><span>불참</span><span class="wire-chip warning">0명</span></div>
+              </div>
+            </div>
+
+            <div class="wire-card">
+              <span class="callout-marker" style="top:272px;right:12px" data-note="7" onclick="highlightNote(7)">7</span>
+              <div class="wire-card-title">미응답자 액션</div>
+              <div class="wire-list">
+                <div class="wire-row"><span>1차 리마인드 발송</span><span class="wire-chip">지금</span></div>
+                <div class="wire-row"><span>2차 알림 예약</span><span class="wire-chip">18:00</span></div>
+                <div class="wire-row"><span>개별 메시지 보내기</span><span class="wire-chip">4명</span></div>
+              </div>
+            </div>
+
+            <div class="wire-actions">
+              <span class="callout-marker" style="top:404px;left:8px" data-note="8" onclick="highlightNote(8)">8</span>
+              <div class="wire-btn-secondary">응답 로그 보기</div>
+              <div class="wire-btn-primary">미응답자 재촉하기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation-panel">
+        <div class="annotation-panel-title">Annotations</div>
+
+        <div class="annotation-item" id="note-5">
+          <div class="annotation-num">5</div>
+          <div>
+            <div class="annotation-title">라이브 KPI 헤더</div>
+            <div class="annotation-desc">모바일 응답 전환율을 상단 KPI로 고정해 운영 의사결정을 빠르게 합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-6">
+          <div class="annotation-num">6</div>
+          <div>
+            <div class="annotation-title">상태별 집계 보드</div>
+            <div class="annotation-desc">호스트가 즉시 인원 배치 리스크를 판단할 수 있도록 상태별 수치를 분리 노출합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-7">
+          <div class="annotation-num">7</div>
+          <div>
+            <div class="annotation-title">미응답 후속 액션</div>
+            <div class="annotation-desc">리마인드/예약/개별 연락을 한 구역에 배치해 2차 운영 단계를 단축합니다.</div>
+          </div>
+        </div>
+
+        <div class="annotation-item" id="note-8">
+          <div class="annotation-num">8</div>
+          <div>
+            <div class="annotation-title">운영 CTA</div>
+            <div class="annotation-desc">재촉 CTA는 <code>POST /api/meetings/{id}/rsvp/quick/remind</code> 호출 후 결과 토스트를 표시합니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="data-section">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <div class="section-title">Data Model</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">QuickRsvpRequest</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">status</span></td><td><span class="model-type">"yes" | "late" | "no"</span></td><td>모바일 즉시 RSVP 상태</td></tr>
+          <tr><td><span class="model-field">note</span></td><td><span class="model-type">string</span></td><td>선택 메모</td></tr>
+          <tr><td><span class="model-field">source</span></td><td><span class="model-type">"sms" | "kakao" | "link"</span></td><td>유입 채널</td></tr>
+          <tr><td><span class="model-field">undoToken</span></td><td><span class="model-type">string</span></td><td>단기 되돌리기용 토큰</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">QuickRsvpSummaryResponse</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">meetingId</span></td><td><span class="model-type">string</span></td><td>미팅 ID</td></tr>
+          <tr><td><span class="model-field">yesCount</span></td><td><span class="model-type">integer</span></td><td>참석 가능 인원</td></tr>
+          <tr><td><span class="model-field">lateCount</span></td><td><span class="model-type">integer</span></td><td>지각 예정 인원</td></tr>
+          <tr><td><span class="model-field">noCount</span></td><td><span class="model-type">integer</span></td><td>불참 인원</td></tr>
+          <tr><td><span class="model-field">pendingCount</span></td><td><span class="model-type">integer</span></td><td>미응답 인원</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <span style="font-size:13px; font-weight:600; color:var(--text);">QuickRsvpSubmitResponse</span>
+      </div>
+      <table class="model-table">
+        <thead><tr><th>Field</th><th>Type</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="model-field">ok</span></td><td><span class="model-type">boolean</span></td><td>저장 성공 여부</td></tr>
+          <tr><td><span class="model-field">status</span></td><td><span class="model-type">"yes" | "late" | "no"</span></td><td>저장된 상태</td></tr>
+          <tr><td><span class="model-field">undoUntil</span></td><td><span class="model-type">string (ISO)</span></td><td>되돌리기 허용 종료 시각</td></tr>
+          <tr><td><span class="model-field">summary</span></td><td><span class="model-type">{ yes, late, no, pending }</span></td><td>업데이트된 집계</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="api-section">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <div class="section-title">API Endpoints</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Path</th><th>설명</th><th>응답</th></tr></thead>
+        <tbody>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/rsvp/quick</span></td><td>모바일 RSVP 즉시 제출</td><td>200 / 400 / 410</td></tr>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/rsvp/quick/undo</span></td><td>10분 이내 되돌리기</td><td>200 / 410</td></tr>
+          <tr><td>GET</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/rsvp/quick/summary</span></td><td>호스트용 실시간 집계</td><td>200 / 404</td></tr>
+          <tr><td>POST</td><td><span style="font-family:monospace;color:var(--text);">/api/meetings/{id}/rsvp/quick/remind</span></td><td>미응답자 재촉 알림 발송</td><td>202 / 400</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" id="edge-section">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <div class="section-title">Edge Cases and Policy</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <div class="edge-item"><span class="edge-code">E1</span><div class="edge-text"><strong>초대 만료 링크</strong> -> 410 응답, 만료 안내와 재초대 요청 CTA 표시</div></div>
+      <div class="edge-item"><span class="edge-code">E2</span><div class="edge-text"><strong>중복 제출</strong> -> 동일 status 재제출 시 200 idempotent 처리</div></div>
+      <div class="edge-item"><span class="edge-code">E3</span><div class="edge-text"><strong>네트워크 불안정</strong> -> 로컬 큐 1회 저장 후 재시도 버튼 노출</div></div>
+      <div class="edge-item"><span class="edge-code">E4</span><div class="edge-text"><strong>Undo 기간 초과</strong> -> undo API는 410, 새 응답 제출로만 변경 허용</div></div>
+      <div class="edge-item"><span class="edge-code">E5</span><div class="edge-text"><strong>미응답자 과다</strong> -> 임계치(25%) 이상 시 호스트 보드에 재촉 CTA 강조</div></div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="doc-section" style="padding-bottom: 80px;">
+    <div class="section-header">
+      <div class="section-number">6</div>
+      <div class="section-title">Implementation Status (Mobile RSVP Quick Flow)</div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px;">
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> /m/{shortId}/rsvp 모바일 라우트 추가</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 3버튼 RSVP 입력 + 선택 메모</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> POST /rsvp/quick 제출 + 성공 피드백</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 10분 Undo 토큰 정책</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 호스트 실시간 요약 보드 연동</div>
+      <div class="status-item"><span style="width: 18px; text-align:center;">○</span> 미응답자 재촉 액션 및 에러 핸들링</div>
+    </div>
+  </div>
+
+  <script>
+    function highlightNote(num) {
+      document.querySelectorAll(".annotation-item.highlight").forEach((el) => el.classList.remove("highlight"));
+      document.querySelectorAll(".callout-marker.active").forEach((el) => el.classList.remove("active"));
+
+      const note = document.getElementById("note-" + num);
+      const marker = document.querySelector('.callout-marker[data-note="' + num + '"]');
+
+      if (note) {
+        note.classList.add("highlight");
+        note.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      if (marker) marker.classList.add("active");
+
+      setTimeout(() => {
+        if (note) note.classList.remove("highlight");
+        if (marker) marker.classList.remove("active");
+      }, 3000);
+    }
+
+    function toggleAnnotations() {
+      const body = document.getElementById("doc-body");
+      const btn = document.getElementById("btn-annotations");
+      body.classList.toggle("annotations-hidden");
+      btn.classList.toggle("active");
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("flash-highlight");
+      setTimeout(() => el.classList.remove("flash-highlight"), 1500);
+    }
+  </script>
+</body>
+</html>

@@ -1,12 +1,12 @@
 ---
 title: 와이어프레임
-description: 로그인/미팅 생성 화면 설계, 플로우, 어노테이션 통합 정리
+description: 로그인/미팅 생성/상세/확정/참석확인 화면 설계, 플로우, 어노테이션 통합 정리
 ---
 
 import { Aside, Card, CardGrid } from "@astrojs/starlight/components";
 import WireframeFull from "../../../components/WireframeFull.astro";
 
-로그인과 미팅 생성 화면의 와이어프레임 의도를 본문에서 바로 읽을 수 있도록 정리한 문서입니다. 시각 자료는 보조로만 두고, 화면 구성·동작·정책을 글 중심으로 통합했습니다.
+로그인부터 일정 확정 이후 참석 확인 단계까지, 핵심 화면의 와이어프레임 의도를 본문에서 바로 읽을 수 있도록 정리한 문서입니다. 시각 자료는 보조로만 두고, 화면 구성·동작·정책을 글 중심으로 통합했습니다.
 
 <Aside type="note" title="현재 버전과 연결">
   - 인증 API 상세는 [인증 플로우](/planning/auth/)에서 이어집니다.
@@ -252,9 +252,169 @@ import WireframeFull from "../../../components/WireframeFull.astro";
 
 ---
 
-## 3. 원본 HTML 새 창으로 열기
+## 3. 미팅 상세 (`/meeting/{id}`)
+
+### 3.1 핵심 목적
+
+- 응답 현황을 슬롯 단위로 집계해 주최자/참여자가 한눈에 파악
+- 주최자가 확정 단계로 넘어가기 전, 미응답자/혼잡 슬롯을 확인
+
+### 3.2 화면 요약
+
+<CardGrid>
+  <Card title="Screen 01 — Summary + Grid" icon="open-book">
+    상단 미팅 메타, 중단 TimeGrid 집계, 하단 참여자 요약 리스트로 구성됩니다.
+  </Card>
+  <Card title="Screen 02 — Participant Focus" icon="user">
+    참여자 본인 선택 슬롯 강조, 수정 액션, 공유 링크 복사 동선을 제공합니다.
+  </Card>
+  <Card title="Screen 03 — Host Ops" icon="setting">
+    미응답자 필터, 마감 알림, finalize 이동 CTA를 포함합니다.
+  </Card>
+</CardGrid>
+
+<WireframeFull src="/wireframes/03.meeting-detail-wireframe.html" title="미팅 상세 와이어프레임" />
+
+### 3.3 연결 API
+
+| Method | Path | 설명 | 응답 |
+|--------|------|------|------|
+| GET | `/api/meetings/{id}` | 미팅 상세 + 요약 조회 | 200 / 404 |
+| GET | `/api/meetings/{id}/votes` | 슬롯별 투표 결과 | 200 / 404 |
+| PUT | `/api/meetings/{id}/votes` | 내 시간 선택 저장 | 200 / 400 |
+
+---
+
+## 4. 일정 확정 (`/meeting/{id}/finalize`)
+
+### 4.1 핵심 목적
+
+- 후보 슬롯을 비교한 뒤 단일 최종 시간을 확정
+- 확정 공지와 알림 옵션을 함께 설정해 후속 운영을 단순화
+
+### 4.2 화면 요약
+
+<CardGrid>
+  <Card title="Screen 01 — Host Final Decision" icon="approve-check">
+    추천 슬롯 랭킹, 공지 메시지 편집, 운영 옵션 토글, 최종 확정 CTA로 구성됩니다.
+  </Card>
+  <Card title="Screen 02 — Participant Result" icon="document">
+    최종 일정 카드, 주최자 공지, 캘린더 추가/링크 복사 액션을 제공합니다.
+  </Card>
+</CardGrid>
+
+<WireframeFull src="/wireframes/04.meeting-finalize-wireframe.html" title="미팅 확정 와이어프레임" />
+
+### 4.3 연결 API
+
+| Method | Path | 설명 | 응답 |
+|--------|------|------|------|
+| POST | `/api/meetings/{id}/finalize` | 최종 시간 확정 + 잠금 | 200 / 400 / 409 |
+| GET | `/api/meetings/{id}/final` | 확정 결과 조회 | 200 / 404 |
+| POST | `/api/meetings/{id}/notify` | 확정 알림 재발송 | 202 / 400 |
+
+---
+
+## 5. 리마인드/참석확인 (`/meeting/{id}/attendance`)
+
+### 5.1 핵심 목적
+
+- 행사 전 리마인드 발송 및 참석 의사(ack) 수집
+- 미응답자를 빠르게 추적해 당일 노쇼 리스크 최소화
+
+### 5.2 화면 요약
+
+<CardGrid>
+  <Card title="Screen 01 — Host Reminder Ops" icon="rocket">
+    메시지 작성, 즉시/예약/재발송 정책 선택, 참석 상태 요약 보드를 제공합니다.
+  </Card>
+  <Card title="Screen 02 — Participant Ack Sheet" icon="user">
+    가능/지각/불참 상태 선택, 메모 입력, 응답 제출/캘린더 액션을 제공합니다.
+  </Card>
+</CardGrid>
+
+<WireframeFull src="/wireframes/05.meeting-reminder-attendance-wireframe.html" title="리마인드/참석확인 와이어프레임" />
+
+### 5.3 연결 API
+
+| Method | Path | 설명 | 응답 |
+|--------|------|------|------|
+| POST | `/api/meetings/{id}/reminders` | 리마인드 생성/큐 등록 | 202 / 400 / 409 |
+| GET | `/api/meetings/{id}/attendance/summary` | 참석 응답 집계 조회 | 200 / 404 |
+| POST | `/api/meetings/{id}/attendance/ack` | 참여자 참석 응답 제출 | 200 / 400 / 410 |
+
+---
+
+## 6. 회고/다음 단계 (`/meeting/{id}/recap`)
+
+### 6.1 핵심 목적
+
+- 모임 종료 후 운영 인사이트를 공유하고 아카이브 품질을 높입니다.
+- 회고 발행 시 다음 모임 초안을 자동 생성해 재모임 전환을 유도합니다.
+
+### 6.2 화면 요약
+
+<CardGrid>
+  <Card title="Screen 01 — Host Recap Publisher" icon="document">
+    회고 요약, 하이라이트, 다음 모임 clone 옵션을 함께 입력합니다.
+  </Card>
+  <Card title="Screen 02 — Participant Reaction" icon="user">
+    회고 확인 후 별점/코멘트 반응과 다음 모임 후보 진입을 제공합니다.
+  </Card>
+</CardGrid>
+
+<WireframeFull src="/wireframes/06.meeting-recap-next-step-wireframe.html" title="회고/다음 단계 와이어프레임" />
+
+### 6.3 연결 API
+
+| Method | Path | 설명 | 응답 |
+|--------|------|------|------|
+| POST | `/api/meetings/{id}/recap` | 회고 작성/발행 | 201 / 400 / 409 |
+| GET | `/api/meetings/{id}/recap` | 회고 조회 | 200 / 404 |
+| POST | `/api/meetings/{id}/recap/reactions` | 참여자 반응 제출 | 200 / 400 / 410 |
+| POST | `/api/meetings/{id}/clone-draft` | 다음 모임 초안 생성 | 201 / 409 |
+
+---
+
+## 7. 모바일 RSVP 단축 플로우 (`/m/{shortId}/rsvp`)
+
+### 7.1 핵심 목적
+
+- 참여자가 모바일 링크 진입 후 10초 내 참석 의사를 남기게 합니다.
+- 호스트는 실시간 집계 보드로 미응답자 대응을 빠르게 수행합니다.
+
+### 7.2 화면 요약
+
+<CardGrid>
+  <Card title="Screen 01 — Participant Quick RSVP" icon="user">
+    3버튼 상태 선택(참석/지각/불참), 선택 메모, 스티키 제출 버튼을 제공합니다.
+  </Card>
+  <Card title="Screen 02 — Host Live Snapshot" icon="setting">
+    실시간 상태 집계와 미응답자 재촉 액션을 한 화면에서 처리합니다.
+  </Card>
+</CardGrid>
+
+<WireframeFull src="/wireframes/07.meeting-mobile-rsvp-quick-flow-wireframe.html" title="모바일 RSVP 단축 플로우 와이어프레임" />
+
+### 7.3 연결 API
+
+| Method | Path | 설명 | 응답 |
+|--------|------|------|------|
+| POST | `/api/meetings/{id}/rsvp/quick` | 모바일 RSVP 즉시 제출 | 200 / 400 / 410 |
+| POST | `/api/meetings/{id}/rsvp/quick/undo` | 짧은 시간 내 제출 취소 | 200 / 410 |
+| GET | `/api/meetings/{id}/rsvp/quick/summary` | 호스트 실시간 집계 | 200 / 404 |
+| POST | `/api/meetings/{id}/rsvp/quick/remind` | 미응답자 재촉 알림 발송 | 202 / 400 |
+
+---
+
+## 8. 원본 HTML 새 창으로 열기
 
 위 임베드된 화면은 원본 HTML과 동일합니다. 전체 화면으로 보고 싶다면 아래 링크에서 새 창으로 열 수 있습니다.
 
 - [로그인 와이어프레임 원본 (새 창)](/wireframes/01.auth-wireframe-login.html)
 - [미팅 생성 와이어프레임 원본 (새 창)](/wireframes/02.meeting-new-wireframe.html)
+- [미팅 상세 와이어프레임 원본 (새 창)](/wireframes/03.meeting-detail-wireframe.html)
+- [미팅 확정 와이어프레임 원본 (새 창)](/wireframes/04.meeting-finalize-wireframe.html)
+- [리마인드/참석확인 와이어프레임 원본 (새 창)](/wireframes/05.meeting-reminder-attendance-wireframe.html)
+- [회고/다음 단계 와이어프레임 원본 (새 창)](/wireframes/06.meeting-recap-next-step-wireframe.html)
+- [모바일 RSVP 단축 플로우 와이어프레임 원본 (새 창)](/wireframes/07.meeting-mobile-rsvp-quick-flow-wireframe.html)

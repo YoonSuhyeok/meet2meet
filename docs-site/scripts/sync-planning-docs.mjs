@@ -80,6 +80,39 @@ const wireframeMappings = [
 		),
 		dest: path.resolve(publicWireframesRoot, "04.meeting-finalize-wireframe.html"),
 	},
+	{
+		source: path.resolve(
+			sourceDocsRoot,
+			"features",
+			"05.meeting-reminder-attendance-wireframe.html",
+		),
+		dest: path.resolve(
+			publicWireframesRoot,
+			"05.meeting-reminder-attendance-wireframe.html",
+		),
+	},
+	{
+		source: path.resolve(
+			sourceDocsRoot,
+			"features",
+			"06.meeting-recap-next-step-wireframe.html",
+		),
+		dest: path.resolve(
+			publicWireframesRoot,
+			"06.meeting-recap-next-step-wireframe.html",
+		),
+	},
+	{
+		source: path.resolve(
+			sourceDocsRoot,
+			"features",
+			"07.meeting-mobile-rsvp-quick-flow-wireframe.html",
+		),
+		dest: path.resolve(
+			publicWireframesRoot,
+			"07.meeting-mobile-rsvp-quick-flow-wireframe.html",
+		),
+	},
 ];
 
 const openApiSource = path.resolve(sourceDocsRoot, "MEETING_API_SPEC.yaml");
