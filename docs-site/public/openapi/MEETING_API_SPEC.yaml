@@ -7,6 +7,10 @@ info:
     Go Core API 서버 (Fly.io) 가 구현하며,
     Cloudflare Workers (Hono BFF) 가 `/api/*` 경로로 프록시한다.
 
+    공개 초대 링크는 `inviteCode` 정책에 따라 동작한다.
+    - `auto`: 초대 코드 입력 후 즉시 참가 코드 발급
+    - `approval`: 참가 요청 생성 후 주최자 승인 시 참가 코드 발급
+
     **인증**:
     - 기본: HttpOnly 쿠키(`meet2meet_auth`) 기반 세션
     - 호환: `Authorization: Bearer <token>` 헤더도 허용
@@ -25,6 +29,8 @@ tags:
     description: 미팅 CRUD
   - name: votes
     description: 참여자 시간 투표 (응답)
+  - name: participants
+    description: 초대 코드 참가/승인/참가 코드 검증
 
 # ───────────────────────────────────────────────
 # Paths
@@ -198,9 +204,11 @@ paths:
   /meetings/code/{inviteCode}:
     get:
       operationId: getMeetingByCode
-      tags: [meetings]
-      summary: 초대 코드로 미팅 조회
-      description: 참여자가 초대 코드를 입력해 미팅에 접근할 때 사용.
+      tags: [meetings, participants]
+      summary: 초대 코드로 미팅 조회 (참가 정책 확인)
+      description: |
+        참여자가 초대 코드를 입력해 미팅 기본 정보와 참가 정책을 조회한다.
+        투표 상세 목록은 이 API에서 반환하지 않는다.
       parameters:
         - $ref: "#/components/parameters/InviteCode"
       responses:
@@ -209,7 +217,149 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeetingDetail"
+                $ref: "#/components/schemas/Meeting"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /meetings/code/{inviteCode}/join-requests:
+    post:
+      operationId: createJoinRequest
+      tags: [participants]
+      summary: 참가 요청 생성 (자동 참가/승인 대기)
+      description: |
+        초대 코드 기반 참가를 요청한다.
+        - `joinPolicy=auto`: 즉시 `participantCode` 발급
+        - `joinPolicy=approval`: `pending` 상태로 대기 후 주최자 승인 필요
+      parameters:
+        - $ref: "#/components/parameters/InviteCode"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRequestCreateRequest"
+      responses:
+        "200":
+          description: 참가 요청 처리 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinRequestCreateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /meetings/{meetingId}/join-requests:
+    get:
+      operationId: listJoinRequests
+      tags: [participants]
+      summary: 참가 요청 목록 조회 (주최자)
+      description: 승인 대기/승인/거절 요청 목록을 조회한다.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      responses:
+        "200":
+          description: 참가 요청 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JoinRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /meetings/{meetingId}/join-requests/{requestId}/approve:
+    post:
+      operationId: approveJoinRequest
+      tags: [participants]
+      summary: 참가 요청 승인 (주최자)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: 승인 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: "#/components/schemas/JoinRequest"
+                  participantCode:
+                    type: string
+                    description: 승인 완료 후 발급된 참가 코드
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /meetings/{meetingId}/join-requests/{requestId}/reject:
+    post:
+      operationId: rejectJoinRequest
+      tags: [participants]
+      summary: 참가 요청 거절 (주최자)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: 거절 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: "#/components/schemas/JoinRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /meetings/{meetingId}/participant-codes/verify:
+    post:
+      operationId: verifyParticipantCode
+      tags: [participants]
+      summary: 참가 코드 검증
+      description: 투표 결과 조회/입력 진입 전 참가 코드를 검증한다.
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantCodeVerifyRequest"
+      responses:
+        "200":
+          description: 검증 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantCodeVerifyResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -249,9 +399,10 @@ paths:
       summary: 미팅 투표 결과 조회
       description: |
         슬롯별 투표자 목록을 반환한다.
-        비로그인 사용자도 조회 가능 (공개 미팅).
+        참가자 코드를 검증한 사용자(또는 주최자 인증 사용자)만 접근 가능하다.
       parameters:
         - $ref: "#/components/parameters/MeetingId"
+        - $ref: "#/components/parameters/ParticipantCode"
       responses:
         "200":
           description: 투표 결과
@@ -259,6 +410,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VoteListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -365,6 +518,27 @@ components:
         pattern: "^[A-Z0-9]{3}-[A-Z0-9]{4}$"
       example: "ABC-1234"
 
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int32
+      example: 77
+
+    ParticipantCode:
+      name: participantCode
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 24
+      description: |
+        승인/자동 참가 완료 후 발급받은 참가 코드.
+        주최자 인증 사용자 요청이면 생략 가능.
+
     Cursor:
       name: cursor
       in: query
@@ -420,6 +594,8 @@ components:
           type: string
           pattern: "^(([01]\\d|2[0-3]):[03]0|24:00)$"
           description: "종료 시간 (HH:mm, 30분 단위, 24:00 허용, startTime보다 커야 함)"
+        joinPolicy:
+          $ref: "#/components/schemas/JoinPolicy"
 
     UpdateMeetingRequest:
       type: object
@@ -475,6 +651,8 @@ components:
         inviteCode:
           type: string
           description: "초대 코드 (예: ABC-1234)"
+        joinPolicy:
+          $ref: "#/components/schemas/JoinPolicy"
         title:
           type: string
         description:
@@ -570,6 +748,97 @@ components:
           items:
             $ref: "#/components/schemas/SlotSummary"
           description: 슬롯별 집계
+
+    JoinPolicy:
+      type: string
+      enum: [auto, approval]
+      description: |
+        초대 코드 참가 정책.
+        - auto: 즉시 참가 코드 발급
+        - approval: 주최자 승인 후 참가 코드 발급
+
+    JoinRequestCreateRequest:
+      type: object
+      required: [requesterId, requesterName]
+      properties:
+        requesterId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        requesterName:
+          type: string
+          minLength: 1
+          maxLength: 50
+
+    JoinRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        meetingId:
+          type: integer
+          format: int32
+        requesterId:
+          type: string
+        requesterName:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        participantCode:
+          type: string
+          nullable: true
+        processedBy:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    JoinRequestCreateResponse:
+      type: object
+      properties:
+        meetingId:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum: [approved, pending]
+        requestId:
+          type: integer
+          format: int32
+          nullable: true
+        participantCode:
+          type: string
+          nullable: true
+
+    ParticipantCodeVerifyRequest:
+      type: object
+      required: [participantCode]
+      properties:
+        participantCode:
+          type: string
+          minLength: 8
+          maxLength: 24
+
+    ParticipantCodeVerifyResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        meetingId:
+          type: integer
+          format: int32
+        requesterId:
+          type: string
+          nullable: true
+        requesterName:
+          type: string
+          nullable: true
 
     MeetingListResponse:
       type: object

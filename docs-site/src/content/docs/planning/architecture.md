@@ -135,6 +135,24 @@ CMD ["/server"]
 
 ---
 
+## 참가 승인/참가 코드 정책
+
+초대 코드 기반 진입은 미팅별 `invite_policy`에 따라 분기한다.
+
+- `auto`: 참가 요청 즉시 승인, `participant_code` 즉시 발급
+- `approval`: 참가 요청은 `pending`으로 저장, 주최자가 승인 시 `participant_code` 발급
+
+주요 데이터 흐름은 다음과 같다.
+
+1. 참여자가 `inviteCode`로 미팅 기본 정보와 참가 정책을 조회한다.
+2. 참여자가 참가 요청을 생성한다.
+3. `approval` 정책이면 주최자가 요청을 승인/거절한다.
+4. 발급된 `participant_code`를 통해 투표 결과 조회 권한을 검증한다.
+
+핵심 테이블은 `meetings(invite_policy)`, `meeting_join_requests`, `meeting_participants`로 구성한다.
+
+---
+
 ## 로컬 개발 환경
 
 ```bash
