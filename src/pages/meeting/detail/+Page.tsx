@@ -6,6 +6,7 @@ import {
     Copy,
     Lock,
     LockOpen,
+    NotebookPen,
     Users,
 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -289,6 +290,14 @@ export default function Page() {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                        <a
+                            href={`/meeting/${meeting.id}/recap`}
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                        >
+                            <NotebookPen className="h-4 w-4" />
+                            회고 작성
+                        </a>
+
                         <button
                             type="button"
                             onClick={handleCopyLink}

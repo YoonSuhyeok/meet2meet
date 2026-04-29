@@ -38,3 +38,37 @@ export interface VoteListResponse {
     votes: Vote[];
     summary: SlotSummary[];
 }
+
+export interface CloneDraftOptions {
+    keepMembers: boolean;
+    keepLocation: boolean;
+    suggestAfterDays: number;
+}
+
+export interface CreateRecapRequest {
+    summaryText: string;
+    highlights: string[];
+    publishToParticipants: boolean;
+    cloneDraftOptions: CloneDraftOptions;
+}
+
+export interface RecapReactionRequest {
+    rating: number;
+    comment?: string;
+    wantsNextInvite: boolean;
+}
+
+export interface RecapReactionSummary {
+    avgRating: number;
+    count: number;
+}
+
+export interface MeetingRecapResponse {
+    meetingId: string;
+    recapId: string;
+    summaryText: string;
+    highlights: string[];
+    publishedAt: string;
+    nextDraftId: string | null;
+    reactionSummary: RecapReactionSummary;
+}

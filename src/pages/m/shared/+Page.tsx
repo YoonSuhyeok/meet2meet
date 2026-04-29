@@ -1,4 +1,4 @@
-import { ArrowRight, LogIn, RotateCcw, Send } from "lucide-react";
+import { ArrowRight, LogIn, NotebookPen, RotateCcw, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePageContext } from "vike-react/usePageContext";
 import { type SlotKey, makeSlotKey } from "@/src/entities/meeting";
@@ -259,6 +259,15 @@ export default function Page() {
                 {isClosed && (
                     <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                         이 미팅은 현재 마감 상태입니다. 투표를 제출하거나 수정할 수 없습니다.
+                        <div className="mt-2">
+                            <a
+                                href={`/m/${meeting.shortId}/recap`}
+                                className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-100"
+                            >
+                                <NotebookPen className="h-3.5 w-3.5" />
+                                회고 보기
+                            </a>
+                        </div>
                     </div>
                 )}
                 {!user && (
