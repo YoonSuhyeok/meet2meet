@@ -15,32 +15,128 @@ type MeetingListItem = {
     updatedAt?: string;
 };
 
-function isMeetingListItem(value: unknown): value is MeetingListItem {
-    if (!value || typeof value !== "object") return false;
-    const item = value as Partial<MeetingListItem>;
-    return (
-        typeof item.id === "string" &&
-        typeof item.title === "string" &&
-        Array.isArray(item.dates) &&
-        !!item.timeRange &&
-        typeof item.timeRange.start === "string" &&
-        typeof item.timeRange.end === "string"
-    );
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === "object";
+}
+
+function toStringId(value: unknown): string | null {
+    if (typeof value === "string" && value.length > 0) return value;
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    return null;
+}
+
+function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter((v): v is string => typeof v === "string");
+}
+
+function parseTimeRange(value: Record<string, unknown>): {
+    start: string;
+    end: string;
+} | null {
+    const direct = isRecord(value.timeRange) ? value.timeRange : null;
+    const snake = isRecord(value.time_range) ? value.time_range : null;
+    const source = direct ?? snake;
+
+    if (source) {
+        const start =
+            typeof source.start === "string"
+                ? source.start
+                : typeof source.startTime === "string"
+                    ? source.startTime
+                    : null;
+        const end =
+            typeof source.end === "string"
+                ? source.end
+                : typeof source.endTime === "string"
+                    ? source.endTime
+                    : null;
+        if (start && end) return { start, end };
+    }
+
+    const startTop =
+        typeof value.startTime === "string"
+            ? value.startTime
+            : typeof value.start === "string"
+                ? value.start
+                : null;
+    const endTop =
+        typeof value.endTime === "string"
+            ? value.endTime
+            : typeof value.end === "string"
+                ? value.end
+                : null;
+
+    if (startTop && endTop) {
+        return { start: startTop, end: endTop };
+    }
+
+    return null;
+}
+
+function parseMeetingListItem(value: unknown): MeetingListItem | null {
+    if (!isRecord(value)) return null;
+
+    const id = toStringId(value.id);
+    const title =
+        typeof value.title === "string"
+            ? value.title
+            : typeof value.name === "string"
+                ? value.name
+                : null;
+    const dates =
+        toStringArray(value.dates).length > 0
+            ? toStringArray(value.dates)
+            : toStringArray(value.candidateDates);
+    const timeRange = parseTimeRange(value);
+
+    if (!id || !title || !timeRange) return null;
+
+    return {
+        id,
+        title,
+        dates,
+        timeRange,
+        participantCount:
+            typeof value.participantCount === "number"
+                ? value.participantCount
+                : typeof value.participant_count === "number"
+                    ? value.participant_count
+                    : 0,
+        createdAt:
+            typeof value.createdAt === "string"
+                ? value.createdAt
+                : typeof value.created_at === "string"
+                    ? value.created_at
+                    : undefined,
+        updatedAt:
+            typeof value.updatedAt === "string"
+                ? value.updatedAt
+                : typeof value.updated_at === "string"
+                    ? value.updated_at
+                    : undefined,
+    };
 }
 
 function normalizeMeetingListResponse(body: unknown): MeetingListItem[] {
+    const candidates: unknown[] = [];
+
     if (Array.isArray(body)) {
-        return body.filter(isMeetingListItem);
+        candidates.push(...body);
     }
 
-    if (body && typeof body === "object") {
-        const maybe = body as { meetings?: unknown };
-        if (Array.isArray(maybe.meetings)) {
-            return maybe.meetings.filter(isMeetingListItem);
+    if (isRecord(body)) {
+        if (Array.isArray(body.meetings)) candidates.push(...body.meetings);
+        if (Array.isArray(body.items)) candidates.push(...body.items);
+        if (isRecord(body.data)) {
+            if (Array.isArray(body.data.meetings)) candidates.push(...body.data.meetings);
+            if (Array.isArray(body.data.items)) candidates.push(...body.data.items);
         }
     }
 
-    return [];
+    return candidates
+        .map(parseMeetingListItem)
+        .filter((item): item is MeetingListItem => item !== null);
 }
 
 function toTimestamp(value?: string): number {
