@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { Fragment, useCallback, useRef } from "react";
 import { makeSlotKey } from "@/src/entities/meeting";
 import { TimeCell, useDragSelect } from "@/src/features/drag-select";
 import type { TimeGridProps } from "../model/types";
@@ -90,9 +90,8 @@ export function TimeGrid({
 
                 {/* 본문 행 */}
                 {timeSlots.map((time) => (
-                    <>
+                    <Fragment key={`row-${time}`}>
                         <div
-                            key={`label-${time}`}
                             className="flex h-8 items-center justify-end pr-2 text-xs text-muted-foreground"
                         >
                             {time}
@@ -108,7 +107,7 @@ export function TimeGrid({
                                 />
                             );
                         })}
-                    </>
+                    </Fragment>
                 ))}
             </div>
         </div>

@@ -57,6 +57,28 @@ export function Calendar({
     const [rangeAnchor, setRangeAnchor] = useState<Date | null>(null);
     const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
     const isDragging = useRef(false);
+    const suppressClickRef = useRef(false);
+    const ignoreMouseAfterTouchRef = useRef(false);
+    const ignoreMouseTimerRef = useRef<number | null>(null);
+
+    const markTouchInteraction = useCallback(() => {
+        ignoreMouseAfterTouchRef.current = true;
+        if (ignoreMouseTimerRef.current !== null) {
+            window.clearTimeout(ignoreMouseTimerRef.current);
+        }
+        ignoreMouseTimerRef.current = window.setTimeout(() => {
+            ignoreMouseAfterTouchRef.current = false;
+            ignoreMouseTimerRef.current = null;
+        }, 700);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (ignoreMouseTimerRef.current !== null) {
+                window.clearTimeout(ignoreMouseTimerRef.current);
+            }
+        };
+    }, []);
 
     const days = getDaysInMonth(viewYear, viewMonth);
     const firstDayOfWeek = days[0].getDay();
@@ -144,12 +166,14 @@ export function Calendar({
     // ── 드래그 선택 (마우스) ──
     const handleMouseDown = useCallback(
         (date: Date, e: React.MouseEvent) => {
+            if (ignoreMouseAfterTouchRef.current) return;
             if (isDisabled(date)) return;
             if (e.shiftKey) {
                 handleSelect(date, true);
                 return;
             }
             e.preventDefault();
+            suppressClickRef.current = false;
             isDragging.current = true;
             setRangeAnchor(date);
             setRangeEnd(date);
@@ -159,6 +183,7 @@ export function Calendar({
 
     const handleMouseEnter = useCallback(
         (date: Date) => {
+            if (ignoreMouseAfterTouchRef.current) return;
             if (!isDragging.current || isDisabled(date)) return;
             setRangeEnd(date);
         },
@@ -166,6 +191,7 @@ export function Calendar({
     );
 
     const handleMouseUp = useCallback(() => {
+        if (ignoreMouseAfterTouchRef.current) return;
         if (!isDragging.current || !rangeAnchor || !rangeEnd) {
             isDragging.current = false;
             return;
@@ -191,26 +217,42 @@ export function Calendar({
             onSelectionChange(next);
         }
 
+        suppressClickRef.current = true;
         isDragging.current = false;
         setRangeAnchor(null);
         setRangeEnd(null);
     }, [rangeAnchor, rangeEnd, selected, onSelectionChange, getRangeDates]);
 
+    const handleCellClick = useCallback(
+        (date: Date, shiftKey: boolean) => {
+            if (isDisabled(date)) return;
+            if (suppressClickRef.current) {
+                suppressClickRef.current = false;
+                return;
+            }
+            handleSelect(date, shiftKey);
+        },
+        [isDisabled, handleSelect],
+    );
+
     // ── 드래그 선택 (터치) ──
     // React onTouchMove는 passive이므로 preventDefault가 무시됩니다.
     // 명시적으로 { passive: false }로 네이티브 리스너를 붙입니다.
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const touchAnchorRef = useRef<Date | null>(null);
     const touchDateRef = useRef<Date | null>(null);
 
     const handleTouchStart = useCallback(
         (date: Date) => {
             if (isDisabled(date)) return;
+            markTouchInteraction();
             isDragging.current = true;
+            touchAnchorRef.current = date;
             touchDateRef.current = date;
             setRangeAnchor(date);
             setRangeEnd(date);
         },
-        [isDisabled],
+        [isDisabled, markTouchInteraction],
     );
 
     useEffect(() => {
@@ -247,14 +289,18 @@ export function Calendar({
     }, [isDisabled]);
 
     const handleTouchEnd = useCallback(() => {
-        if (!isDragging.current || !rangeAnchor || !rangeEnd) {
+        const start = rangeAnchor ?? touchAnchorRef.current;
+        const end = rangeEnd ?? touchDateRef.current ?? start;
+
+        if (!isDragging.current || !start || !end) {
             isDragging.current = false;
+            touchAnchorRef.current = null;
             touchDateRef.current = null;
             return;
         }
 
-        if (isSameDay(rangeAnchor, rangeEnd)) {
-            const key = toDateKey(rangeAnchor);
+        if (isSameDay(start, end)) {
+            const key = toDateKey(start);
             const next = new Set(selected);
             if (next.has(key)) {
                 next.delete(key);
@@ -263,7 +309,7 @@ export function Calendar({
             }
             onSelectionChange(next);
         } else {
-            const rangeDates = getRangeDates(rangeAnchor, rangeEnd);
+            const rangeDates = getRangeDates(start, end);
             const next = new Set(selected);
             for (const key of rangeDates) {
                 next.add(key);
@@ -271,7 +317,9 @@ export function Calendar({
             onSelectionChange(next);
         }
 
+        suppressClickRef.current = true;
         isDragging.current = false;
+        touchAnchorRef.current = null;
         touchDateRef.current = null;
         setRangeAnchor(null);
         setRangeEnd(null);
@@ -296,6 +344,11 @@ export function Calendar({
             style={{ touchAction: "none" }}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onPointerUp={(e) => {
+                if (e.pointerType === "touch") {
+                    handleTouchEnd();
+                }
+            }}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
         >
@@ -372,7 +425,20 @@ export function Calendar({
                             )}
                             onMouseDown={(e) => handleMouseDown(date, e)}
                             onMouseEnter={() => handleMouseEnter(date)}
+                            onPointerDown={(e) => {
+                                if (e.pointerType === "touch") {
+                                    handleTouchStart(date);
+                                }
+                            }}
+                            onPointerUp={(e) => {
+                                if (e.pointerType === "touch") {
+                                    handleTouchEnd();
+                                }
+                            }}
                             onTouchStart={() => handleTouchStart(date)}
+                            onTouchEnd={handleTouchEnd}
+                            onTouchCancel={handleTouchEnd}
+                            onClick={(e) => handleCellClick(date, e.shiftKey)}
                         >
                             {date.getDate()}
                         </div>

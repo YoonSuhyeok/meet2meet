@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { usePageContext } from "vike-react/usePageContext";
+import { apiFetch, useAuth } from "@/src/features/auth";
 import { cn } from "@/src/shared";
 import { resolveServerErrorMessage } from "@/src/pages/meeting/new/errors";
 import {
@@ -65,6 +66,7 @@ export default function Page() {
         () => getMeetingIdFromContext(pageContext),
         [pageContext],
     );
+    const { user, loading: authLoading } = useAuth();
 
     const [meeting, setMeeting] = useState<MeetingDetailResponse | null>(null);
     const [votes, setVotes] = useState<Vote[]>([]);
@@ -75,6 +77,15 @@ export default function Page() {
     const [isClosed, setIsClosed] = useState(false);
 
     useEffect(() => {
+        if (authLoading) {
+            return;
+        }
+
+        if (!user) {
+            window.location.href = "/login";
+            return;
+        }
+
         if (!meetingId) {
             setError("미팅 ID를 확인할 수 없습니다.");
             setLoading(false);
@@ -88,11 +99,12 @@ export default function Page() {
             setError(null);
 
             try {
-                const meetingRes = await fetch(`/api/meetings/${meetingId}`, {
+                const meetingRes = await apiFetch(`/api/meetings/${meetingId}`, {
                     signal: controller.signal,
                 });
 
                 if (!meetingRes.ok) {
+                    if (meetingRes.status === 401) return;
                     const body = (await meetingRes.json().catch(() => null)) as
                         | { code?: string; message?: string }
                         | null;
@@ -105,7 +117,7 @@ export default function Page() {
                     (await meetingRes.json()) as MeetingDetailResponse;
                 setMeeting(meetingBody);
 
-                const votesRes = await fetch(`/api/meetings/${meetingId}/votes`, {
+                const votesRes = await apiFetch(`/api/meetings/${meetingId}/votes`, {
                     signal: controller.signal,
                 });
                 if (votesRes.ok) {
@@ -128,7 +140,7 @@ export default function Page() {
 
         load();
         return () => controller.abort();
-    }, [meetingId]);
+    }, [authLoading, meetingId, user]);
 
     const dates = meeting?.dates ?? [];
     const timeSlots = useMemo(
@@ -235,7 +247,7 @@ export default function Page() {
         });
     }, [meeting]);
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="space-y-4 py-12">
                 <div className="h-8 w-64 animate-pulse rounded bg-muted" />

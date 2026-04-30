@@ -1,0 +1,18 @@
+{
+  "name": "Meet2Meet",
+  "short_name": "Meet2Meet",
+  "description": "드래그 기반 시간 선택으로 모임 일정을 빠르게 조율합니다.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
