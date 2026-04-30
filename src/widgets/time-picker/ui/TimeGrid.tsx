@@ -46,7 +46,6 @@ export function TimeGrid({
 
     const handleTouchMove = useCallback(
         (e: React.TouchEvent) => {
-            e.preventDefault();
             const touch = e.touches[0];
             moveDrag(touch.clientX, touch.clientY);
         },
