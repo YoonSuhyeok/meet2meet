@@ -278,8 +278,8 @@ export default function Page() {
         <div className="space-y-6 pb-10">
             <section className="rounded-[1.75rem] border border-border/70 bg-background p-6 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.42)] sm:p-7">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="space-y-2">
-                        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                    <div className="min-w-0 space-y-2">
+                        <h1 className="text-2xl font-semibold tracking-tight text-foreground break-words [overflow-wrap:anywhere] sm:text-3xl">
                             {meeting.title}
                         </h1>
                         <div className="flex flex-wrap items-center gap-2">
