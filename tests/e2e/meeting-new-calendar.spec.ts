@@ -78,4 +78,31 @@ test.describe("mobile", () => {
 		await tapTodayDate(page);
 		await expectSingleDateSelected(page);
 	});
+
+	test("meeting/new title 50 chars keeps mobile layout stable", async ({ page }) => {
+		await setupMeetingNewPage(page);
+
+		const titleInput = page.locator("#meeting-title");
+		await expect(titleInput).toBeVisible();
+		await titleInput.tap();
+
+		const fiftyChars = "0123456789".repeat(5);
+		await titleInput.fill(fiftyChars);
+
+		await expect(titleInput).toHaveValue(fiftyChars);
+		await expect(page.getByText("50 / 50")).toBeVisible();
+
+		await expect
+			.poll(async () => {
+				return page.evaluate(() => {
+					const root = document.documentElement;
+					const maxAllowedWidth = window.innerWidth + 1;
+					const noHorizontalOverflow = root.scrollWidth <= maxAllowedWidth;
+					const scale = window.visualViewport?.scale ?? 1;
+					const stableScale = scale <= 1.01;
+					return noHorizontalOverflow && stableScale;
+				});
+			})
+			.toBe(true);
+	});
 });

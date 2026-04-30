@@ -258,8 +258,8 @@ export function MeetingForm({
 				</div>
 			)}
 
-			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
-				<div className="space-y-6">
+			<div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
+				<div className="min-w-0 space-y-6">
 					<FormSection
 						eyebrow="기본 정보"
 						title="모임의 분위기를 먼저 적어둘게요"
@@ -529,7 +529,7 @@ export function MeetingForm({
 					</div>
 				</div>
 
-				<aside className="space-y-4 xl:sticky xl:top-28 xl:h-fit">
+				<aside className="min-w-0 space-y-4 xl:sticky xl:top-28 xl:h-fit">
 					<div className="rounded-[1.75rem] border border-border/70 bg-card/90 p-5 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.22)]">
 							<p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
 								빠른 흐름
