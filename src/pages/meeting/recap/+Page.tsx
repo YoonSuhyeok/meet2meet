@@ -21,6 +21,7 @@ import type {
     MeetingDetailResponse,
     MeetingRecapResponse,
 } from "@/src/pages/meeting/model/types";
+import { normalizeMeetingDetailResponse } from "@/src/pages/meeting/model/types";
 
 function getMeetingIdFromContext(pageContext: unknown): string | null {
     const maybeContext = pageContext as {
@@ -123,7 +124,11 @@ export default function Page() {
                     throw new Error(resolveServerErrorMessage(res.status, body));
                 }
 
-                const detail = (await res.json()) as MeetingDetailResponse;
+                const meetingRaw = (await res.json().catch(() => null)) as unknown;
+                const detail = normalizeMeetingDetailResponse(meetingRaw);
+                if (!detail) {
+                    throw new Error("미팅 데이터 형식이 올바르지 않습니다.");
+                }
                 setMeeting(detail);
             } catch (err) {
                 if (controller.signal.aborted) return;

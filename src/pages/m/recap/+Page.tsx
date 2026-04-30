@@ -13,6 +13,7 @@ import type {
     MeetingRecapResponse,
     RecapReactionRequest,
 } from "@/src/pages/meeting/model/types";
+import { normalizeMeetingDetailResponse } from "@/src/pages/meeting/model/types";
 
 function getShortIdFromContext(pageContext: unknown): string | null {
     const maybeContext = pageContext as {
@@ -95,7 +96,11 @@ export default function Page() {
                     throw new Error(resolveServerErrorMessage(meetingRes.status, body));
                 }
 
-                const detail = (await meetingRes.json()) as MeetingDetailResponse;
+                const meetingRaw = (await meetingRes.json().catch(() => null)) as unknown;
+                const detail = normalizeMeetingDetailResponse(meetingRaw);
+                if (!detail) {
+                    throw new Error("미팅 데이터 형식이 올바르지 않습니다.");
+                }
                 setMeeting(detail);
 
                 const recapRes = await fetch(`/api/meetings/${detail.id}/recap`, {

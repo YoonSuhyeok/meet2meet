@@ -25,6 +25,7 @@ import type {
     Vote,
     VoteListResponse,
 } from "@/src/pages/meeting/model/types";
+import { normalizeMeetingDetailResponse } from "@/src/pages/meeting/model/types";
 
 function getMeetingIdFromContext(pageContext: unknown): string | null {
     const maybeContext = pageContext as {
@@ -113,9 +114,17 @@ export default function Page() {
                     );
                 }
 
-                const meetingBody =
-                    (await meetingRes.json()) as MeetingDetailResponse;
+                const meetingRaw = (await meetingRes.json().catch(() => null)) as unknown;
+                const meetingBody = normalizeMeetingDetailResponse(meetingRaw);
+                if (!meetingBody) {
+                    throw new Error("미팅 데이터 형식이 올바르지 않습니다.");
+                }
                 setMeeting(meetingBody);
+
+                if ((meetingBody.participantCount ?? 0) <= 0) {
+                    setVotes([]);
+                    return;
+                }
 
                 const votesRes = await apiFetch(`/api/meetings/${meetingId}/votes`, {
                     signal: controller.signal,
