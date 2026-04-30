@@ -286,7 +286,7 @@ export default function Page() {
                                             href={`/meeting/${meeting.id}`}
                                             className="block rounded-2xl border border-border/80 bg-card p-4 transition hover:border-primary/40 hover:bg-accent/30"
                                         >
-                                            <p className="text-base font-semibold text-foreground">
+                                            <p className="text-base font-semibold text-foreground break-words [overflow-wrap:anywhere]">
                                                 {meeting.title}
                                             </p>
                                             <p className="mt-1 text-sm text-muted-foreground">
