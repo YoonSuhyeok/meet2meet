@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
 import type {
     PushSubscriptionStatus,
-    RegisterPushSubscriptionRequest,
     SubscriptionErrorResponse,
 } from "@/src/types/notification";
+import { apiFetch } from "@/src/features/auth";
+import {
+    consumeSubscriptionIntent,
+    saveSubscriptionIntent,
+} from "@/src/features/notification/subscriptionIntent";
+import {
+    buildRegisterRequest,
+    getToggleNotice,
+    resolveSubscriptionErrorMessage,
+} from "@/src/features/notification/toggleModel";
 import styles from "./PushNotificationToggle.module.css";
 
 interface PushNotificationToggleProps {
@@ -30,9 +39,17 @@ export function PushNotificationToggle({
     const [isStandalone, setIsStandalone] = useState(false);
     const [permissionStatus, setPermissionStatus] =
         useState<NotificationPermission | null>(null);
+    const [statusLoaded, setStatusLoaded] = useState(false);
+    const notice = getToggleNotice({
+        isLoggedIn,
+        isStandalone,
+        permissionStatus,
+        isSubscribed,
+    });
 
     // 초기화: 브라우저 context 확인
     useEffect(() => {
+        setStatusLoaded(false);
         const isStandaloneMode =
             window.matchMedia("(display-mode: standalone)").matches ||
             (navigator as any).standalone === true;
@@ -47,6 +64,8 @@ export function PushNotificationToggle({
         // 로그인 상태일 때만 서버에서 상태 조회
         if (isLoggedIn) {
             fetchSubscriptionStatus();
+        } else {
+            setStatusLoaded(true);
         }
     }, [isLoggedIn, meetingId]);
 
@@ -55,20 +74,35 @@ export function PushNotificationToggle({
      */
     async function fetchSubscriptionStatus() {
         try {
-            const resp = await fetch(
+            const resp = await apiFetch(
                 `/api/meetings/${meetingId}/push-subscriptions/status`,
             );
             if (resp.ok) {
                 const data = (await resp.json()) as PushSubscriptionStatus;
                 setIsSubscribed(data.isSubscribed);
+            } else if (resp.status !== 401) {
+                setError("구독 상태를 불러오지 못했습니다");
             }
         } catch (err) {
             console.error(
                 "[notification] fetchSubscriptionStatus failed:",
                 err,
             );
+        } finally {
+            setStatusLoaded(true);
         }
     }
+
+    useEffect(() => {
+        if (!isLoggedIn) return;
+        if (!statusLoaded) return;
+        if (isSubscribed) return;
+
+        const shouldReplay = consumeSubscriptionIntent(meetingId);
+        if (shouldReplay) {
+            void subscribe();
+        }
+    }, [isLoggedIn, statusLoaded, isSubscribed, meetingId]);
 
     /**
      * 토글 클릭 핸들러
@@ -76,6 +110,7 @@ export function PushNotificationToggle({
     async function handleToggle() {
         // 로그인 필요
         if (!isLoggedIn) {
+            saveSubscriptionIntent(meetingId);
             onLoginRequired?.();
             return;
         }
@@ -144,42 +179,14 @@ export function PushNotificationToggle({
             }
 
             // 서버에 구독 등록
-            const req: RegisterPushSubscriptionRequest = {
+            const req = buildRegisterRequest({
                 isStandalone,
-                notificationPermissionStatus: newPermStatus,
-                pushSubscription: {
-                    endpoint: subscription.endpoint,
-                    expirationTime: subscription.expirationTime,
-                    keys: subscription.getKey
-                        ? {
-                              auth: btoa(
-                                  String.fromCharCode.apply(
-                                      null,
-                                      Array.from(
-                                          new Uint8Array(
-                                              subscription.getKey("auth") || [],
-                                          ),
-                                      ),
-                                  ),
-                              ),
-                              p256dh: btoa(
-                                  String.fromCharCode.apply(
-                                      null,
-                                      Array.from(
-                                          new Uint8Array(
-                                              subscription.getKey("p256dh") ||
-                                                  [],
-                                          ),
-                                      ),
-                                  ),
-                              ),
-                          }
-                        : { auth: "", p256dh: "" },
-                },
+                permissionStatus: newPermStatus,
+                subscription,
                 deviceId: getDeviceId(),
-            };
+            });
 
-            const resp = await fetch(
+            const resp = await apiFetch(
                 `/api/meetings/${meetingId}/push-subscriptions`,
                 {
                     method: "POST",
@@ -193,7 +200,7 @@ export function PushNotificationToggle({
             } else {
                 const errorData =
                     (await resp.json()) as SubscriptionErrorResponse;
-                setError(errorData.message || "구독 등록 실패");
+                setError(resolveSubscriptionErrorMessage(errorData));
             }
         } catch (err) {
             console.error("[notification] subscribe failed:", err);
@@ -211,7 +218,7 @@ export function PushNotificationToggle({
         setError(null);
 
         try {
-            const resp = await fetch(
+            const resp = await apiFetch(
                 `/api/meetings/${meetingId}/push-subscriptions`,
                 { method: "DELETE" },
             );
@@ -265,30 +272,7 @@ export function PushNotificationToggle({
 
             {error && <div className={styles.error}>{error}</div>}
 
-            {/* 로그인 안 된 경우 안내 */}
-            {!isLoggedIn && (
-                <div className={styles.notice}>
-                    로그인하면 이 미팅의 일정 변경, 미팅 시작 알림을 받을 수
-                    있습니다.
-                </div>
-            )}
-
-            {/* 권한 미허용 안내 */}
-            {isLoggedIn &&
-                isStandalone &&
-                permissionStatus !== "granted" &&
-                !isSubscribed && (
-                    <div className={styles.notice}>
-                        설정에서 알림을 허용하면 실시간 알림을 받을 수 있습니다.
-                    </div>
-                )}
-
-            {/* 미설치 안내 */}
-            {isLoggedIn && !isStandalone && !isSubscribed && (
-                <div className={styles.notice}>
-                    PWA를 홈 화면에 추가하면 알림을 받을 수 있습니다.
-                </div>
-            )}
+            {notice && <div className={styles.notice}>{notice}</div>}
         </div>
     );
 }

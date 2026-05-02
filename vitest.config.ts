@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 /**
@@ -7,18 +8,23 @@ import { defineConfig } from "vitest/config";
  * Node 환경의 plain Vitest로도 동등하게 검증 가능합니다.
  */
 export default defineConfig({
-	test: {
-		environment: "node",
-		include: ["src/**/*.test.{ts,tsx}"],
-		coverage: {
-			provider: "istanbul",
-			reporter: ["text", "html"],
-			include: ["src/**/*.{ts,tsx}"],
-			exclude: [
-				"src/**/*.test.{ts,tsx}",
-				"src/**/*.stories.{ts,tsx}",
-				"src/**/+*.{ts,tsx}",
-			],
-		},
-	},
+    resolve: {
+        alias: {
+            "@": path.resolve(__dirname, "."),
+        },
+    },
+    test: {
+        environment: "node",
+        include: ["src/**/*.test.{ts,tsx}"],
+        coverage: {
+            provider: "istanbul",
+            reporter: ["text", "html"],
+            include: ["src/**/*.{ts,tsx}"],
+            exclude: [
+                "src/**/*.test.{ts,tsx}",
+                "src/**/*.stories.{ts,tsx}",
+                "src/**/+*.{ts,tsx}",
+            ],
+        },
+    },
 });
