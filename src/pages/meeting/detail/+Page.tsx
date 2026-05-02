@@ -12,8 +12,7 @@ import {
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { usePageContext } from "vike-react/usePageContext";
 import { apiFetch, useAuth } from "@/src/features/auth";
-import { cn } from "@/src/shared";
-import { resolveServerErrorMessage } from "@/src/pages/meeting/new/errors";
+import { AttendanceNudgeButton } from "@/src/features/notification/AttendanceNudgeButton";
 import {
     createTimeSlotsFromRange,
     formatDateLabel,
@@ -26,6 +25,8 @@ import type {
     VoteListResponse,
 } from "@/src/pages/meeting/model/types";
 import { normalizeMeetingDetailResponse } from "@/src/pages/meeting/model/types";
+import { resolveServerErrorMessage } from "@/src/pages/meeting/new/errors";
+import { cn } from "@/src/shared";
 
 function getMeetingIdFromContext(pageContext: unknown): string | null {
     const maybeContext = pageContext as {
@@ -119,32 +120,44 @@ export default function Page() {
             setError(null);
 
             try {
-                const meetingRes = await apiFetch(`/api/meetings/${meetingId}`, {
-                    signal: controller.signal,
-                });
+                const meetingRes = await apiFetch(
+                    `/api/meetings/${meetingId}`,
+                    {
+                        signal: controller.signal,
+                    },
+                );
 
                 if (!meetingRes.ok) {
                     if (meetingRes.status === 401) return;
-                    const body = (await meetingRes.json().catch(() => null)) as
-                        | { code?: string; message?: string }
-                        | null;
+                    const body = (await meetingRes
+                        .json()
+                        .catch(() => null)) as {
+                        code?: string;
+                        message?: string;
+                    } | null;
                     throw new Error(
                         resolveServerErrorMessage(meetingRes.status, body),
                     );
                 }
 
-                const meetingRaw = (await meetingRes.json().catch(() => null)) as unknown;
+                const meetingRaw = (await meetingRes
+                    .json()
+                    .catch(() => null)) as unknown;
                 const meetingBody = normalizeMeetingDetailResponse(meetingRaw);
                 if (!meetingBody) {
                     throw new Error("미팅 데이터 형식이 올바르지 않습니다.");
                 }
                 setMeeting(meetingBody);
 
-                const votesRes = await apiFetch(`/api/meetings/${meetingId}/votes`, {
-                    signal: controller.signal,
-                });
+                const votesRes = await apiFetch(
+                    `/api/meetings/${meetingId}/votes`,
+                    {
+                        signal: controller.signal,
+                    },
+                );
                 if (votesRes.ok) {
-                    const votesBody = (await votesRes.json()) as VoteListResponse;
+                    const votesBody =
+                        (await votesRes.json()) as VoteListResponse;
                     setVotes(votesBody.votes ?? []);
                 } else {
                     setVotes([]);
@@ -211,8 +224,12 @@ export default function Page() {
         return items;
     }, [summaryMap]);
 
-    const participantCount = Math.max(meeting?.participantCount ?? 0, votes.length);
+    const participantCount = Math.max(
+        meeting?.participantCount ?? 0,
+        votes.length,
+    );
     const pendingCount = Math.max(participantCount - votes.length, 0);
+    const isHost = !!user && !!meeting && user.id === meeting.hostId;
     const shareUrl =
         meeting && typeof window !== "undefined"
             ? `${window.location.origin}/m/${meeting.shortId}`
@@ -316,8 +333,8 @@ export default function Page() {
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            {meeting.location || "장소 미정"} · {meeting.timeRange.start} ~{" "}
-                            {meeting.timeRange.end}
+                            {meeting.location || "장소 미정"} ·{" "}
+                            {meeting.timeRange.start} ~ {meeting.timeRange.end}
                         </p>
                         {meeting.description && (
                             <p className="max-w-[72ch] text-sm leading-6 text-muted-foreground">
@@ -360,8 +377,17 @@ export default function Page() {
                             )}
                         >
                             <BellRing className="h-4 w-4" />
-                            {reminderCopied ? "리마인드 복사됨" : "리마인드 문구 복사"}
+                            {reminderCopied
+                                ? "리마인드 복사됨"
+                                : "리마인드 문구 복사"}
                         </button>
+
+                        {isHost && isClosed && pendingCount > 0 && (
+                            <AttendanceNudgeButton
+                                meetingId={meeting.id}
+                                pendingCount={pendingCount}
+                            />
+                        )}
 
                         <button
                             type="button"
@@ -390,21 +416,27 @@ export default function Page() {
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
-                        <p className="text-xs text-muted-foreground">후보 날짜</p>
+                        <p className="text-xs text-muted-foreground">
+                            후보 날짜
+                        </p>
                         <p className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">
                             <CalendarDays className="h-4 w-4" />
                             {dates.length}일
                         </p>
                     </div>
                     <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
-                        <p className="text-xs text-muted-foreground">응답 참여자</p>
+                        <p className="text-xs text-muted-foreground">
+                            응답 참여자
+                        </p>
                         <p className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">
                             <Users className="h-4 w-4" />
                             {participantCount}명
                         </p>
                     </div>
                     <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
-                        <p className="text-xs text-muted-foreground">최고 겹침 슬롯</p>
+                        <p className="text-xs text-muted-foreground">
+                            최고 겹침 슬롯
+                        </p>
                         <p className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">
                             <CheckCircle2 className="h-4 w-4" />
                             {maxCount}명
@@ -453,7 +485,8 @@ export default function Page() {
                                     </div>
                                     {dates.map((date) => {
                                         const slotKey = `${date}-${time}`;
-                                        const count = summaryMap.get(slotKey) ?? 0;
+                                        const count =
+                                            summaryMap.get(slotKey) ?? 0;
                                         return (
                                             <div
                                                 key={slotKey}
@@ -492,10 +525,13 @@ export default function Page() {
             </section>
 
             <section className="rounded-[1.75rem] border border-border/70 bg-background p-6 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.42)] sm:p-7">
-                <h2 className="text-lg font-semibold text-foreground">참여자 상태</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                    참여자 상태
+                </h2>
                 {pendingCount > 0 && (
                     <p className="mt-2 text-sm text-muted-foreground">
-                        아직 {pendingCount}명이 응답하지 않았습니다. 상단의 리마인드 문구 복사로 안내를 보낼 수 있습니다.
+                        아직 {pendingCount}명이 응답하지 않았습니다. 상단의
+                        리마인드 문구 복사로 안내를 보낼 수 있습니다.
                     </p>
                 )}
                 {votes.length === 0 ? (
@@ -514,20 +550,19 @@ export default function Page() {
                                         {vote.userName}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
-                                        {vote.slots.length} 슬롯 선택 · {formatUpdatedAtLabel(vote.updatedAt)}
+                                        {vote.slots.length} 슬롯 선택 ·{" "}
+                                        {formatUpdatedAtLabel(vote.updatedAt)}
                                     </span>
                                 </div>
                                 <div className="mt-2 flex flex-wrap gap-1.5">
-                                    {[...vote.slots]
-                                        .sort()
-                                        .map((slot) => (
-                                            <span
-                                                key={`${vote.userId}-${slot}`}
-                                                className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-foreground"
-                                            >
-                                                {formatVoteSlotLabel(slot)}
-                                            </span>
-                                        ))}
+                                    {[...vote.slots].sort().map((slot) => (
+                                        <span
+                                            key={`${vote.userId}-${slot}`}
+                                            className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-foreground"
+                                        >
+                                            {formatVoteSlotLabel(slot)}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
                         ))}
