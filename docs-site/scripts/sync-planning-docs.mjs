@@ -47,6 +47,11 @@ const planningMappings = [
 		dest: path.resolve(docsContentRoot, "pwa-setup.md"),
 		title: "PWA 설정",
 	},
+	{
+		source: path.resolve(sourceDocsRoot, "NOTIFICATION_CORE_API_README.md"),
+		dest: path.resolve(docsContentRoot, "notification-core-api.md"),
+		title: "Notification Core API",
+	},
 ];
 
 const wireframeMappings = [
