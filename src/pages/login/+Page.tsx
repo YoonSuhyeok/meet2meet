@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "@/src/features/auth";
+import { consumePostLoginRedirect, useAuth } from "@/src/features/auth";
 import { LoginPage } from "./LoginPage";
 
 export default function Page() {
@@ -10,7 +10,7 @@ export default function Page() {
 
     useEffect(() => {
         if (!loading && user) {
-            window.location.href = "/";
+            window.location.href = consumePostLoginRedirect() ?? "/";
         }
     }, [user, loading]);
 

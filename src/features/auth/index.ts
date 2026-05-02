@@ -1,4 +1,5 @@
 export { apiFetch } from "./apiFetch";
+export { consumePostLoginRedirect, savePostLoginRedirect } from "./postLoginRedirect";
 export {
     clearStoredAuthToken,
     createAuthHeaders,

@@ -2,7 +2,8 @@ import { ArrowRight, LogIn, NotebookPen, RotateCcw, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePageContext } from "vike-react/usePageContext";
 import { type SlotKey, makeSlotKey } from "@/src/entities/meeting";
-import { apiFetch, useAuth } from "@/src/features/auth";
+import { apiFetch, savePostLoginRedirect, useAuth } from "@/src/features/auth";
+import { PushNotificationToggle } from "@/src/features/notification";
 import { cn } from "@/src/shared";
 import { TimeGrid } from "@/src/widgets/time-picker";
 import { resolveServerErrorMessage } from "@/src/pages/meeting/new/errors";
@@ -228,6 +229,15 @@ export default function Page() {
         setStatusMessage(null);
     }, []);
 
+    const handleLoginRequiredForNotification = useCallback(() => {
+        if (!meeting) {
+            window.location.href = "/login";
+            return;
+        }
+        savePostLoginRedirect(`/m/${meeting.shortId}`);
+        window.location.href = "/login";
+    }, [meeting]);
+
     if (loading || authLoading) {
         return (
             <div className="space-y-4 py-12">
@@ -353,6 +363,20 @@ export default function Page() {
                         <Send className="h-4 w-4" />
                         {submitting ? "저장 중..." : "응답 제출"}
                     </button>
+                </div>
+            </section>
+
+            <section className="rounded-[1.75rem] border border-border/70 bg-background p-6 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.42)] sm:p-7">
+                <h2 className="text-lg font-semibold text-foreground">미팅 알림</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    이 미팅의 일정 변경과 시작 전 안내를 PushNotification으로 받을 수 있습니다.
+                </p>
+                <div className="mt-4">
+                    <PushNotificationToggle
+                        meetingId={meeting.id}
+                        isLoggedIn={!!user}
+                        onLoginRequired={handleLoginRequiredForNotification}
+                    />
                 </div>
             </section>
 
