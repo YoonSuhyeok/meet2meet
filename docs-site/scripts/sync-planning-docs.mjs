@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, copyFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,6 +16,8 @@ const docsContentRoot = path.resolve(
 	"docs",
 	"planning",
 );
+const prdContentRoot = path.resolve(docsSiteRoot, "src", "content", "docs", "prd");
+const sourcePrdRoot = path.resolve(sourceDocsRoot, "prd");
 const publicWireframesRoot = path.resolve(docsSiteRoot, "public", "wireframes");
 const publicOpenapiRoot = path.resolve(docsSiteRoot, "public", "openapi");
 
@@ -122,6 +124,15 @@ function withFrontMatter(title, body) {
 	return `---\ntitle: ${title}\n---\n\n${body.trim()}\n`;
 }
 
+function titleFromFileName(fileName) {
+	const stem = fileName.replace(/\.md$/i, "");
+	const normalized = stem.replace(/^\d{4}-\d{2}-\d{2}-/, "");
+	return normalized
+		.split("-")
+		.map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+		.join(" ");
+}
+
 for (const mapping of planningMappings) {
 	await mkdir(path.dirname(mapping.dest), { recursive: true });
 	const sourceBody = await readFile(mapping.source, "utf8");
@@ -137,7 +148,17 @@ for (const mapping of wireframeMappings) {
 	await copyFile(mapping.source, mapping.dest);
 }
 
+await mkdir(prdContentRoot, { recursive: true });
+const prdFiles = (await readdir(sourcePrdRoot)).filter((name) => name.endsWith(".md"));
+
+for (const prdFile of prdFiles) {
+	const source = path.resolve(sourcePrdRoot, prdFile);
+	const dest = path.resolve(prdContentRoot, prdFile);
+	const sourceBody = await readFile(source, "utf8");
+	await writeFile(dest, withFrontMatter(titleFromFileName(prdFile), sourceBody), "utf8");
+}
+
 await mkdir(path.dirname(openApiDest), { recursive: true });
 await copyFile(openApiSource, openApiDest);
 
-console.log("Planning docs, wireframes, and OpenAPI spec synchronized.");
+console.log("Planning docs, PRDs, wireframes, and OpenAPI spec synchronized.");

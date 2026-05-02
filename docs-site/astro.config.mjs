@@ -26,6 +26,10 @@ export default defineConfig({
 					label: "기획 문서",
 					autogenerate: { directory: "planning" },
 				},
+					{
+						label: "PRD",
+						autogenerate: { directory: "prd" },
+					},
 				{
 					label: "API 문서",
 					items: [

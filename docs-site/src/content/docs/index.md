@@ -18,8 +18,9 @@ hero:
 ## 포함 내용
 
 1. 기획/아키텍처 문서 (`docs/` 소스 동기화)
-2. 와이어프레임 HTML 산출물
-3. OpenAPI 스펙 기반 API 문서 (`MEETING_API_SPEC.yaml`)
+2. PRD 문서 (`docs/prd/` 소스 동기화)
+3. 와이어프레임 HTML 산출물
+4. OpenAPI 스펙 기반 API 문서 (`MEETING_API_SPEC.yaml`)
 
 ## 동기화 방식
 
