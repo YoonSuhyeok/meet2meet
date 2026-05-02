@@ -61,6 +61,25 @@ function countClass(count: number, max: number): string {
     return "bg-primary/20";
 }
 
+function formatVoteSlotLabel(slot: string): string {
+    const parsed = parseSlotKey(slot);
+    if (!parsed) return slot;
+    return `${formatDateLabel(parsed.date)} ${parsed.time}`;
+}
+
+function formatUpdatedAtLabel(value: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "업데이트 시각 없음";
+
+    return new Intl.DateTimeFormat("ko-KR", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    }).format(parsed);
+}
+
 export default function Page() {
     const pageContext = usePageContext();
     const meetingId = useMemo(
@@ -121,17 +140,14 @@ export default function Page() {
                 }
                 setMeeting(meetingBody);
 
-                if ((meetingBody.participantCount ?? 0) <= 0) {
-                    setVotes([]);
-                    return;
-                }
-
                 const votesRes = await apiFetch(`/api/meetings/${meetingId}/votes`, {
                     signal: controller.signal,
                 });
                 if (votesRes.ok) {
                     const votesBody = (await votesRes.json()) as VoteListResponse;
                     setVotes(votesBody.votes ?? []);
+                } else {
+                    setVotes([]);
                 }
             } catch (err) {
                 if (controller.signal.aborted) return;
@@ -491,14 +507,28 @@ export default function Page() {
                         {votes.map((vote) => (
                             <div
                                 key={vote.userId}
-                                className="flex items-center justify-between rounded-xl border border-border/70 bg-card/80 px-4 py-3"
+                                className="rounded-xl border border-border/70 bg-card/80 px-4 py-3"
                             >
-                                <span className="text-sm font-medium text-foreground">
-                                    {vote.userName}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                    {vote.slots.length} 슬롯 선택
-                                </span>
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-sm font-medium text-foreground">
+                                        {vote.userName}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {vote.slots.length} 슬롯 선택 · {formatUpdatedAtLabel(vote.updatedAt)}
+                                    </span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {[...vote.slots]
+                                        .sort()
+                                        .map((slot) => (
+                                            <span
+                                                key={`${vote.userId}-${slot}`}
+                                                className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-foreground"
+                                            >
+                                                {formatVoteSlotLabel(slot)}
+                                            </span>
+                                        ))}
+                                </div>
                             </div>
                         ))}
                     </div>
