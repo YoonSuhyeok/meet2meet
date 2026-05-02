@@ -122,8 +122,16 @@ const wireframeMappings = [
 	},
 ];
 
-const openApiSource = path.resolve(sourceDocsRoot, "MEETING_API_SPEC.yaml");
-const openApiDest = path.resolve(publicOpenapiRoot, "MEETING_API_SPEC.yaml");
+const openApiMappings = [
+	{
+		source: path.resolve(sourceDocsRoot, "MEETING_API_SPEC.yaml"),
+		dest: path.resolve(publicOpenapiRoot, "MEETING_API_SPEC.yaml"),
+	},
+	{
+		source: path.resolve(sourceDocsRoot, "NOTIFICATION_API_SPEC.yaml"),
+		dest: path.resolve(publicOpenapiRoot, "NOTIFICATION_API_SPEC.yaml"),
+	},
+];
 
 function withFrontMatter(title, body) {
 	return `---\ntitle: ${title}\n---\n\n${body.trim()}\n`;
@@ -163,7 +171,9 @@ for (const prdFile of prdFiles) {
 	await writeFile(dest, withFrontMatter(titleFromFileName(prdFile), sourceBody), "utf8");
 }
 
-await mkdir(path.dirname(openApiDest), { recursive: true });
-await copyFile(openApiSource, openApiDest);
+for (const mapping of openApiMappings) {
+	await mkdir(path.dirname(mapping.dest), { recursive: true });
+	await copyFile(mapping.source, mapping.dest);
+}
 
 console.log("Planning docs, PRDs, wireframes, and OpenAPI spec synchronized.");

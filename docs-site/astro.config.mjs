@@ -34,6 +34,7 @@ export default defineConfig({
 					label: "API 문서",
 					items: [
 						{ label: "Meeting API (Swagger)", link: "/api/meeting/" },
+						{ label: "Notification API (Swagger)", link: "/api/notification/" },
 					],
 				},
 			],
