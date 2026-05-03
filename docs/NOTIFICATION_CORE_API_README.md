@@ -36,6 +36,7 @@ Core API must trust BFF identity headers instead of browser auth token.
 
 Required inbound headers from BFF:
 - `X-User-Id`: authenticated account id
+- `X-Device-Id`: current device context id for device-scoped unsubscribe/status
 
 Notes:
 - Browser `Authorization` token must not be required at Core API boundary.
@@ -81,7 +82,7 @@ Validation failure:
 `DELETE /meetings/{meetingId}/push-subscriptions`
 
 Core behavior:
-1. Resolve target subscription by `userId x meetingId` and current device context (or provided device id policy).
+1. Resolve target subscription by `userId x meetingId x deviceId` using `X-Device-Id` current device context.
 2. Mark subscription inactive immediately.
 3. Ensure send pipeline excludes inactive subscriptions at send-time filter.
 4. Return `204`.
@@ -91,7 +92,7 @@ Core behavior:
 `GET /meetings/{meetingId}/push-subscriptions/status`
 
 Core behavior:
-- return current device-level status snapshot:
+- return current device-level status snapshot (selected by `X-Device-Id`):
   - `isSubscribed`
   - `isStandalone`
   - `notificationPermissionStatus`

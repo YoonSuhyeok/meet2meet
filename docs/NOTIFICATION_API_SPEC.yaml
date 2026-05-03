@@ -92,11 +92,13 @@ paths:
       description: |
         해당 미팅의 구독을 해지한다.
         해지 즉시(발송 직전 필터)부터 반영된다.
+        현재 기기 식별은 `X-Device-Id` 헤더로 전달한다.
       security:
         - cookieAuth: []
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/MeetingId"
+        - $ref: "#/components/parameters/DeviceIdHeader"
       responses:
         "204":
           description: 구독 해지 완료
@@ -116,11 +118,13 @@ paths:
         - 설치/권한 상태
         - InstallFlag 상태
         - 마지막 재검증 시각
+        현재 기기 식별은 `X-Device-Id` 헤더로 전달한다.
       security:
         - cookieAuth: []
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/MeetingId"
+        - $ref: "#/components/parameters/DeviceIdHeader"
       responses:
         "200":
           description: 구독 상태
@@ -205,6 +209,17 @@ components:
         type: integer
         format: int32
       example: 123456
+
+    DeviceIdHeader:
+      name: X-Device-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 64
+      description: "현재 기기를 식별하는 ID"
+      example: "device-uuid-1234"
 
   schemas:
     # ── Request ──
