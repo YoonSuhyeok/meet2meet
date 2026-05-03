@@ -200,6 +200,119 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /meetings/{meetingId}/status:
+    patch:
+      operationId: updateMeetingStatus
+      tags: [meetings]
+      summary: 투표 상태 변경 (마감/재오픈)
+      description: |
+        미팅 주최자만 투표 상태를 변경할 수 있다.
+        - `isClosed=true`: 투표 마감
+        - `isClosed=false`: 재오픈
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeetingStatusRequest"
+            example:
+              isClosed: true
+      responses:
+        "200":
+          description: 상태 변경 완료
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingStatusResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /meetings/{meetingId}/final:
+    get:
+      operationId: getMeetingFinal
+      tags: [meetings]
+      summary: 확정된 최종 일정 조회
+      description: |
+        미팅의 최종 확정 슬롯이 있으면 반환한다.
+        비로그인 사용자도 조회 가능하다.
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      responses:
+        "200":
+          description: 확정 슬롯
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingFinalResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /meetings/{meetingId}/finalize:
+    post:
+      operationId: finalizeMeeting
+      tags: [meetings]
+      summary: 최종 일정 확정
+      description: 미팅 주최자가 최종 일정을 확정하고 투표를 마감한다.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeMeetingRequest"
+            example:
+              slot: "2026-04-20-19:00"
+      responses:
+        "200":
+          description: 확정 완료
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingFinalResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: clearMeetingFinal
+      tags: [meetings]
+      summary: 최종 일정 확정 해제
+      description: 미팅 주최자가 확정 상태를 해제한다.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      responses:
+        "204":
+          description: 확정 해제 완료
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # ── 초대 코드로 조회 ──
   /meetings/code/{inviteCode}:
     get:
@@ -625,6 +738,23 @@ components:
           type: string
           pattern: "^(([01]\\d|2[0-3]):[03]0|24:00)$"
 
+    UpdateMeetingStatusRequest:
+      type: object
+      required: [isClosed]
+      properties:
+        isClosed:
+          type: boolean
+          description: true면 투표 마감, false면 재오픈
+
+    FinalizeMeetingRequest:
+      type: object
+      required: [slot]
+      properties:
+        slot:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}-([01]\\d|2[0-3]):[03]0$"
+          description: "확정 슬롯 키 (YYYY-MM-DD-HH:mm)"
+
     SubmitVoteRequest:
       type: object
       required: [slots]
@@ -674,6 +804,25 @@ components:
         participantCount:
           type: integer
           description: 투표한 참여자 수
+        isClosed:
+          type: boolean
+          description: 투표 마감 여부
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 투표 마감 시각
+        finalSlot:
+          type: string
+          description: "최종 확정 슬롯 키 (YYYY-MM-DD-HH:mm)"
+        finalizedBy:
+          type: string
+          description: 확정한 주최자명
+        finalizedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 확정 시각
         createdAt:
           type: string
           format: date-time
@@ -748,6 +897,34 @@ components:
           items:
             $ref: "#/components/schemas/SlotSummary"
           description: 슬롯별 집계
+
+    MeetingStatusResponse:
+      type: object
+      properties:
+        meetingId:
+          type: integer
+          format: int32
+        isClosed:
+          type: boolean
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MeetingFinalResponse:
+      type: object
+      properties:
+        meetingId:
+          type: integer
+          format: int32
+        slot:
+          type: string
+          description: "확정 슬롯 키 (YYYY-MM-DD-HH:mm)"
+        finalizedBy:
+          type: string
+        finalizedAt:
+          type: string
+          format: date-time
 
     JoinPolicy:
       type: string
