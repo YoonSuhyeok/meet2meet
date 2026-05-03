@@ -15,7 +15,7 @@ export function useAuth() {
 
     useEffect(() => {
         // HttpOnly 쿠키 기반 세션 확인
-        apiFetch("/api/auth/me")
+        apiFetch("/api/auth/me", {}, { onUnauthorized: "none" })
             .then((res) => (res.ok ? (res.json() as Promise<User>) : null))
             .then((data) => setUser(data))
             .catch(() => setUser(null))

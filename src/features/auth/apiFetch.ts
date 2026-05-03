@@ -5,16 +5,24 @@
  * - 응답 401일 때 세션 정리 API 호출 후 로그인 페이지로 이동
  * - 그 외 응답은 그대로 반환 (호출 측에서 본문 파싱/에러 처리)
  */
+type ApiFetchOptions = {
+    onUnauthorized?: "redirect" | "none";
+};
+
 export async function apiFetch(
     input: RequestInfo | URL,
     init: RequestInit = {},
+    options: ApiFetchOptions = {},
 ): Promise<Response> {
     const response = await fetch(input, {
         ...init,
         credentials: init.credentials ?? "same-origin",
     });
 
-    if (response.status === 401) {
+    if (
+        response.status === 401 &&
+        (options.onUnauthorized ?? "redirect") === "redirect"
+    ) {
         forceLogout("session_expired");
     }
 

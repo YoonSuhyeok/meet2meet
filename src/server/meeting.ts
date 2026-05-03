@@ -31,6 +31,7 @@ export const meetingRoutes = new Hono<{ Bindings: Bindings }>();
  */
 meetingRoutes.all("/*", async (c) => {
     const coreBase = c.env.CORE_API_URL ?? DEFAULT_CORE_API_URL;
+    const url = new URL(c.req.url);
 
     // ── 인증 처리 ──
     const authHeader = c.req.header("Authorization");
@@ -61,7 +62,13 @@ meetingRoutes.all("/*", async (c) => {
     // 변경 작업이나 보호 엔드포인트는 인증 필수
     const method = c.req.method.toUpperCase();
     const isMutating = method !== "GET" && method !== "HEAD";
-    if (isMutating && !userId) {
+    const participantCode = (url.searchParams.get("participantCode") ?? "").trim();
+    const isGuestVoteSubmit =
+        method === "PUT" &&
+        /^\/api\/meetings\/[^/]+\/votes$/.test(url.pathname) &&
+        participantCode.startsWith("guest:");
+
+    if (isMutating && !userId && !isGuestVoteSubmit) {
         return c.json(
             { code: "unauthorized", message: "로그인이 필요합니다." },
             401,
@@ -69,7 +76,6 @@ meetingRoutes.all("/*", async (c) => {
     }
 
     // ── 업스트림 URL 빌드 ──
-    const url = new URL(c.req.url);
     // /api/meetings 라우트로 마운트 → Go 쪽은 /meetings/...
     const upstreamPath = url.pathname.replace(/^\/api/, "");
     const upstreamUrl = `${coreBase.replace(/\/$/, "")}${upstreamPath}${url.search}`;
@@ -82,6 +88,12 @@ meetingRoutes.all("/*", async (c) => {
     if (accept) headers.set("Accept", accept);
     if (userId) headers.set("X-User-Id", userId);
     if (userName) headers.set("X-User-Name", encodeURIComponent(userName));
+    if (isGuestVoteSubmit) {
+        const participantName = c.req.header("X-Participant-Name");
+        if (participantName) {
+            headers.set("X-Participant-Name", participantName);
+        }
+    }
 
     // ── 본문 (GET/HEAD 제외) ──
     let body: BodyInit | undefined;

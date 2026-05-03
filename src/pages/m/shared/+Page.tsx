@@ -10,6 +10,7 @@ import { resolveServerErrorMessage } from "@/src/pages/meeting/new/errors";
 import {
     createTimeSlotsFromRange,
     formatDateLabel,
+    parseSlotKey,
 } from "@/src/pages/meeting/model/time";
 import type {
     MeetingDetailResponse,
@@ -17,6 +18,30 @@ import type {
     VoteListResponse,
 } from "@/src/pages/meeting/model/types";
 import { normalizeMeetingDetailResponse } from "@/src/pages/meeting/model/types";
+
+const GUEST_PARTICIPANT_PREFIX = "guest:";
+
+function createGuestParticipantCode() {
+    const uuid =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return `${GUEST_PARTICIPANT_PREFIX}${uuid}`;
+}
+
+function getGuestParticipantCode(shortId: string) {
+    if (typeof window === "undefined") return "";
+
+    const key = `meeting:guest:participant:${shortId}`;
+    const stored = window.localStorage.getItem(key);
+    if (stored?.startsWith(GUEST_PARTICIPANT_PREFIX)) {
+        return stored;
+    }
+
+    const created = createGuestParticipantCode();
+    window.localStorage.setItem(key, created);
+    return created;
+}
 
 function getShortIdFromContext(pageContext: unknown): string | null {
     const maybeContext = pageContext as {
@@ -36,6 +61,12 @@ function getShortIdFromContext(pageContext: unknown): string | null {
 
 function buildInitialSelected(vote: Vote | null): Set<SlotKey> {
     return new Set(vote?.slots ?? []);
+}
+
+function formatSlotLabel(slot: string): string {
+    const parsed = parseSlotKey(slot);
+    if (!parsed) return slot;
+    return `${formatDateLabel(parsed.date)} ${parsed.time}`;
 }
 
 export default function Page() {
@@ -135,13 +166,16 @@ export default function Page() {
 
         const key = `meeting:closed:${meeting.id}`;
         const sync = () => {
-            setIsClosed(window.localStorage.getItem(key) === "1");
+            setIsClosed(window.localStorage.getItem(key) === "1" || !!meeting.finalSlot);
         };
 
         sync();
         window.addEventListener("storage", sync);
         return () => window.removeEventListener("storage", sync);
     }, [meeting]);
+
+    const finalizedSlot = meeting?.finalSlot ?? null;
+    const isMeetingLocked = isClosed || !!finalizedSlot;
 
     const dates = meeting?.dates ?? [];
     const timeSlots = useMemo(
@@ -161,25 +195,30 @@ export default function Page() {
         [dates],
     );
 
-    const canSubmit = !!user && selected.size > 0 && !submitting && !isClosed;
+    const canSubmit = selected.size > 0 && !submitting && !isMeetingLocked;
+
+    const navigateToLoginWithRedirect = useCallback(() => {
+        if (!meeting) {
+            window.location.href = "/login";
+            return;
+        }
+
+        savePostLoginRedirect(`/m/${meeting.shortId}`);
+        window.location.href = "/login";
+    }, [meeting]);
 
     const handleSelectionChange = useCallback(
         (next: Set<SlotKey>) => {
-            if (isClosed) return;
+            if (isMeetingLocked) return;
             setSelected(next);
         },
-        [isClosed],
+        [isMeetingLocked],
     );
 
     const handleSubmit = useCallback(async () => {
         if (!meeting) return;
 
-        if (!user) {
-            window.location.href = "/login";
-            return;
-        }
-
-        if (isClosed) {
+        if (isMeetingLocked) {
             setStatusMessage("이미 마감된 미팅입니다. 주최자에게 재오픈을 요청해주세요.");
             return;
         }
@@ -194,11 +233,27 @@ export default function Page() {
 
         try {
             const slots = [...selected].sort();
-            const res = await apiFetch(`/api/meetings/${meeting.id}/votes`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slots }),
-            });
+            const guestParticipantCode = user
+                ? ""
+                : getGuestParticipantCode(meeting.shortId);
+            const voteUrl = guestParticipantCode
+                ? `/api/meetings/${meeting.id}/votes?participantCode=${encodeURIComponent(guestParticipantCode)}`
+                : `/api/meetings/${meeting.id}/votes`;
+
+            const res = await apiFetch(
+                voteUrl,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(guestParticipantCode
+                            ? { "X-Participant-Name": "Guest" }
+                            : {}),
+                    },
+                    body: JSON.stringify({ slots }),
+                },
+                user ? {} : { onUnauthorized: "none" },
+            );
 
             if (!res.ok) {
                 if (res.status === 401) return;
@@ -222,7 +277,7 @@ export default function Page() {
         } finally {
             setSubmitting(false);
         }
-    }, [isClosed, meeting, selected, user]);
+    }, [isMeetingLocked, meeting, navigateToLoginWithRedirect, selected, user]);
 
     const handleReset = useCallback(() => {
         setSelected(new Set());
@@ -230,13 +285,8 @@ export default function Page() {
     }, []);
 
     const handleLoginRequiredForNotification = useCallback(() => {
-        if (!meeting) {
-            window.location.href = "/login";
-            return;
-        }
-        savePostLoginRedirect(`/m/${meeting.shortId}`);
-        window.location.href = "/login";
-    }, [meeting]);
+        navigateToLoginWithRedirect();
+    }, [navigateToLoginWithRedirect]);
 
     if (loading || authLoading) {
         return (
@@ -271,9 +321,11 @@ export default function Page() {
                 <p className="mt-1 text-sm text-muted-foreground">
                     투표 시간: {meeting.timeRange.start} ~ {meeting.timeRange.end}
                 </p>
-                {isClosed && (
+                {isMeetingLocked && (
                     <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        이 미팅은 현재 마감 상태입니다. 투표를 제출하거나 수정할 수 없습니다.
+                        {finalizedSlot
+                            ? `호스트가 일정을 확정했습니다: ${formatSlotLabel(finalizedSlot)}`
+                            : "이 미팅은 현재 마감 상태입니다. 투표를 제출하거나 수정할 수 없습니다."}
                         <div className="mt-2">
                             <a
                                 href={`/m/${meeting.shortId}/recap`}
@@ -286,14 +338,15 @@ export default function Page() {
                     </div>
                 )}
                 {!user && (
-                    <a
-                        href="/login"
+                    <button
+                        type="button"
+                        onClick={navigateToLoginWithRedirect}
                         className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent"
                     >
                         <LogIn className="h-4 w-4" />
-                        로그인하고 응답 제출
+                        로그인해서 내 응답 연동
                         <ArrowRight className="h-4 w-4" />
-                    </a>
+                    </button>
                 )}
             </section>
 

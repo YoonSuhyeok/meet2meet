@@ -20,6 +20,7 @@ import {
 } from "@/src/pages/meeting/model/time";
 import type {
     MeetingDetailResponse,
+    MeetingFinalResponse,
     SlotSummary,
     Vote,
     VoteListResponse,
@@ -81,6 +82,21 @@ function formatUpdatedAtLabel(value: string): string {
     }).format(parsed);
 }
 
+function toMeetingFinal(
+    meeting: MeetingDetailResponse | null,
+): MeetingFinalResponse | null {
+    if (!meeting?.finalSlot || !meeting.finalizedAt) {
+        return null;
+    }
+
+    return {
+        meetingId: meeting.id,
+        slot: meeting.finalSlot,
+        finalizedBy: meeting.finalizedBy ?? meeting.hostName,
+        finalizedAt: meeting.finalizedAt,
+    };
+}
+
 export default function Page() {
     const pageContext = usePageContext();
     const meetingId = useMemo(
@@ -96,6 +112,9 @@ export default function Page() {
     const [copied, setCopied] = useState(false);
     const [reminderCopied, setReminderCopied] = useState(false);
     const [isClosed, setIsClosed] = useState(false);
+    const [finalized, setFinalized] = useState<MeetingFinalResponse | null>(null);
+    const [finalizeBusy, setFinalizeBusy] = useState(false);
+    const [finalizeMessage, setFinalizeMessage] = useState<string | null>(null);
 
     useEffect(() => {
         if (authLoading) {
@@ -148,6 +167,7 @@ export default function Page() {
                     throw new Error("미팅 데이터 형식이 올바르지 않습니다.");
                 }
                 setMeeting(meetingBody);
+                setFinalized(toMeetingFinal(meetingBody));
 
                 const votesRes = await apiFetch(
                     `/api/meetings/${meetingId}/votes`,
@@ -194,8 +214,22 @@ export default function Page() {
     );
 
     const summaryMap = useMemo(
-        () => toSummaryMap(meeting?.voteSummary),
-        [meeting?.voteSummary],
+        () => {
+            const meetingSummary = toSummaryMap(meeting?.voteSummary);
+            if (meetingSummary.size > 0) {
+                return meetingSummary;
+            }
+
+            const voteSummary = new Map<string, number>();
+            for (const vote of votes) {
+                for (const slot of vote.slots ?? []) {
+                    voteSummary.set(slot, (voteSummary.get(slot) ?? 0) + 1);
+                }
+            }
+
+            return voteSummary;
+        },
+        [meeting?.voteSummary, votes],
     );
 
     const maxCount = useMemo(() => {
@@ -242,8 +276,95 @@ export default function Page() {
         }
 
         const key = `meeting:closed:${meeting.id}`;
-        setIsClosed(window.localStorage.getItem(key) === "1");
-    }, [meeting]);
+        setIsClosed(window.localStorage.getItem(key) === "1" || !!finalized);
+    }, [finalized, meeting]);
+
+    const handleFinalize = useCallback(
+        async (slot: string) => {
+            if (!meeting || !isHost) return;
+
+            setFinalizeBusy(true);
+            setFinalizeMessage(null);
+            try {
+                const res = await apiFetch(`/api/meetings/${meeting.id}/finalize`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ slot }),
+                });
+
+                if (!res.ok) {
+                    const body = (await res.json().catch(() => null)) as
+                        | { code?: string; message?: string; error?: string }
+                        | null;
+                    throw new Error(
+                        resolveServerErrorMessage(res.status, {
+                            code: body?.code,
+                            message: body?.message ?? body?.error,
+                        }),
+                    );
+                }
+
+                const body = (await res.json()) as MeetingFinalResponse;
+                setFinalized({
+                    meetingId: String(body.meetingId),
+                    slot: body.slot,
+                    finalizedBy: body.finalizedBy,
+                    finalizedAt: body.finalizedAt,
+                });
+                setIsClosed(true);
+                setFinalizeMessage("최종 일정이 확정되었습니다.");
+            } catch (err) {
+                setFinalizeMessage(
+                    err instanceof Error
+                        ? err.message
+                        : "일정 확정에 실패했습니다. 다시 시도해주세요.",
+                );
+            } finally {
+                setFinalizeBusy(false);
+            }
+        },
+        [isHost, meeting],
+    );
+
+    const handleClearFinalization = useCallback(() => {
+        if (!meeting || !isHost) return;
+
+        setFinalizeBusy(true);
+        setFinalizeMessage(null);
+        void apiFetch(`/api/meetings/${meeting.id}/finalize`, {
+            method: "DELETE",
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    const body = (await res.json().catch(() => null)) as
+                        | { code?: string; message?: string; error?: string }
+                        | null;
+                    throw new Error(
+                        resolveServerErrorMessage(res.status, {
+                            code: body?.code,
+                            message: body?.message ?? body?.error,
+                        }),
+                    );
+                }
+
+                setFinalized(null);
+                if (typeof window !== "undefined") {
+                    const key = `meeting:closed:${meeting.id}`;
+                    setIsClosed(window.localStorage.getItem(key) === "1");
+                } else {
+                    setIsClosed(false);
+                }
+                setFinalizeMessage("확정이 해제되었습니다.");
+            })
+            .catch((err) => {
+                setFinalizeMessage(
+                    err instanceof Error
+                        ? err.message
+                        : "확정 해제에 실패했습니다. 다시 시도해주세요.",
+                );
+            })
+            .finally(() => setFinalizeBusy(false));
+    }, [isHost, meeting]);
 
     const handleCopyLink = useCallback(async () => {
         if (!shareUrl) return;
@@ -275,7 +396,7 @@ export default function Page() {
     }, [meeting, shareUrl]);
 
     const handleToggleClosed = useCallback(() => {
-        if (!meeting || typeof window === "undefined") return;
+        if (!meeting || finalized || typeof window === "undefined") return;
 
         const key = `meeting:closed:${meeting.id}`;
         setIsClosed((prev) => {
@@ -287,7 +408,7 @@ export default function Page() {
             }
             return next;
         });
-    }, [meeting]);
+    }, [finalized, meeting]);
 
     if (loading || authLoading) {
         return (
@@ -392,11 +513,13 @@ export default function Page() {
                         <button
                             type="button"
                             onClick={handleToggleClosed}
+                            disabled={!!finalized}
                             className={cn(
                                 "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
                                 isClosed
                                     ? "bg-emerald-600 text-white hover:bg-emerald-500"
                                     : "bg-amber-500 text-white hover:bg-amber-400",
+                                finalized && "cursor-not-allowed opacity-60",
                             )}
                         >
                             {isClosed ? (
@@ -487,12 +610,16 @@ export default function Page() {
                                         const slotKey = `${date}-${time}`;
                                         const count =
                                             summaryMap.get(slotKey) ?? 0;
+                                        const isFinalSlot =
+                                            finalized?.slot === slotKey;
                                         return (
                                             <div
                                                 key={slotKey}
                                                 className={cn(
                                                     "flex h-8 items-center justify-center border border-border/40 text-[11px]",
                                                     countClass(count, maxCount),
+                                                    isFinalSlot &&
+                                                        "border-emerald-500 ring-2 ring-emerald-400/70",
                                                 )}
                                             >
                                                 {count > 0 ? count : ""}
@@ -520,6 +647,56 @@ export default function Page() {
                                 </span>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {finalized && (
+                    <div className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                        <p className="font-semibold">최종 일정이 확정되었습니다.</p>
+                        <p className="mt-1">
+                            {formatVoteSlotLabel(finalized.slot)} · {finalized.finalizedBy}
+                        </p>
+                    </div>
+                )}
+
+                {isHost && topSlots.length > 0 && (
+                    <div className="mt-4 rounded-2xl border border-border/70 bg-card/70 p-4">
+                        <p className="text-sm font-semibold text-foreground">
+                            호스트 일정 확정
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            추천 슬롯을 선택해 최종 일정을 확정하면 투표가 잠금됩니다.
+                        </p>
+
+                        {!finalized ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {topSlots.map((item) => (
+                                    <button
+                                        key={`finalize-${item.slot}`}
+                                        type="button"
+                                        disabled={finalizeBusy}
+                                        onClick={() => handleFinalize(item.slot)}
+                                        className="rounded-full border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100"
+                                    >
+                                        {item.label} 확정
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                disabled={finalizeBusy}
+                                onClick={handleClearFinalization}
+                                className="mt-3 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-accent"
+                            >
+                                확정 해제
+                            </button>
+                        )}
+                        {finalizeMessage && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {finalizeMessage}
+                            </p>
+                        )}
                     </div>
                 )}
             </section>

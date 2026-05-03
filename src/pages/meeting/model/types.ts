@@ -23,6 +23,16 @@ export interface MeetingDetailResponse {
     createdAt: string;
     updatedAt: string;
     voteSummary?: SlotSummary[];
+    finalSlot?: string;
+    finalizedBy?: string;
+    finalizedAt?: string;
+}
+
+export interface MeetingFinalResponse {
+    meetingId: string;
+    slot: string;
+    finalizedBy: string;
+    finalizedAt: string;
 }
 
 export interface Vote {
@@ -102,6 +112,9 @@ type RawMeetingDetailResponse = {
     createdAt?: unknown;
     updatedAt?: unknown;
     voteSummary?: unknown;
+    finalSlot?: unknown;
+    finalizedBy?: unknown;
+    finalizedAt?: unknown;
 };
 
 function pickString(...values: unknown[]): string {
@@ -196,5 +209,10 @@ export function normalizeMeetingDetailResponse(
                 ? raw.updatedAt
                 : new Date().toISOString(),
         voteSummary: normalizeVoteSummary(raw.voteSummary),
+        finalSlot: typeof raw.finalSlot === "string" ? raw.finalSlot : undefined,
+        finalizedBy:
+            typeof raw.finalizedBy === "string" ? raw.finalizedBy : undefined,
+        finalizedAt:
+            typeof raw.finalizedAt === "string" ? raw.finalizedAt : undefined,
     };
 }

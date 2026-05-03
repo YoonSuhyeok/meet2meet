@@ -112,6 +112,108 @@ describe("meetingRoutes (BFF proxy)", () => {
 			const headers = new Headers(init.headers);
 			expect(headers.get("X-User-Id")).toBeNull();
 		});
+
+		it("GET /final: 토큰 없어도 통과", async () => {
+			fetchSpy.mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						meetingId: 35,
+						slot: "2026-04-30-10:30",
+						finalizedBy: "호스트",
+						finalizedAt: "2026-05-03T11:30:00.000Z",
+					}),
+					{
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					},
+				),
+			);
+
+			const app = buildApp();
+			const res = await app.request("/api/meetings/35/final", {}, env);
+
+			expect(res.status).toBe(200);
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBeNull();
+		});
+
+		it("POST /finalize: 토큰 없으면 401", async () => {
+			const app = buildApp();
+			const res = await app.request(
+				"/api/meetings/35/finalize",
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ slot: "2026-04-30-10:30" }),
+				},
+				env,
+			);
+
+			expect(res.status).toBe(401);
+			expect(fetchSpy).not.toHaveBeenCalled();
+		});
+
+		it("DELETE /finalize: 토큰 없으면 401", async () => {
+			const app = buildApp();
+			const res = await app.request(
+				"/api/meetings/35/finalize",
+				{ method: "DELETE" },
+				env,
+			);
+
+			expect(res.status).toBe(401);
+			expect(fetchSpy).not.toHaveBeenCalled();
+		});
+
+		it("PUT /votes: guest participantCode면 비로그인도 통과", async () => {
+			fetchSpy.mockResolvedValue(
+				new Response(JSON.stringify({ message: "ok" }), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				}),
+			);
+
+			const app = buildApp();
+			const res = await app.request(
+				"/api/meetings/123/votes?participantCode=guest%3Aabc123",
+				{
+					method: "PUT",
+					headers: {
+						"Content-Type": "application/json",
+						"X-Participant-Name": "Guest",
+					},
+					body: JSON.stringify({ slots: ["2026-04-30-09:00"] }),
+				},
+				env,
+			);
+
+			expect(res.status).toBe(200);
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBeNull();
+			expect(headers.get("X-Participant-Name")).toBe("Guest");
+		});
+
+		it("PUT /votes: participantCode 없으면 비로그인 제출은 401", async () => {
+			const app = buildApp();
+			const res = await app.request(
+				"/api/meetings/123/votes",
+				{
+					method: "PUT",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ slots: ["2026-04-30-09:00"] }),
+				},
+				env,
+			);
+
+			expect(res.status).toBe(401);
+			expect(fetchSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe("프록시 동작", () => {
@@ -237,6 +339,79 @@ describe("meetingRoutes (BFF proxy)", () => {
 			expect(fetchSpy).toHaveBeenCalledOnce();
 			const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
 			expect(init.method).toBe("DELETE");
+		});
+
+		it("POST /finalize: 인증되면 본문+사용자 헤더를 업스트림에 전달", async () => {
+			fetchSpy.mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						meetingId: 35,
+						slot: "2026-04-30-10:30",
+						finalizedBy: "홍길동",
+						finalizedAt: "2026-05-03T11:30:00.000Z",
+					}),
+					{
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					},
+				),
+			);
+			const token = await makeToken({ sub: "host-1", name: "호스트" });
+			const app = buildApp();
+
+			const res = await app.request(
+				"/api/meetings/35/finalize",
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ slot: "2026-04-30-10:30" }),
+				},
+				env,
+			);
+
+			expect(res.status).toBe(200);
+			expect(fetchSpy).toHaveBeenCalledOnce();
+
+			const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe(`${env.CORE_API_URL}/meetings/35/finalize`);
+			expect(init.method).toBe("POST");
+
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBe("host-1");
+			expect(headers.get("X-User-Name")).toBe(encodeURIComponent("호스트"));
+			expect(headers.get("Content-Type")).toBe("application/json");
+
+			const body = init.body as ArrayBuffer;
+			const text = new TextDecoder().decode(body);
+			expect(JSON.parse(text)).toEqual({ slot: "2026-04-30-10:30" });
+		});
+
+		it("DELETE /finalize: 인증되면 업스트림으로 forward", async () => {
+			fetchSpy.mockResolvedValue(new Response(null, { status: 204 }));
+			const token = await makeToken({ sub: "host-1", name: "호스트" });
+			const app = buildApp();
+
+			const res = await app.request(
+				"/api/meetings/35/finalize",
+				{
+					method: "DELETE",
+					headers: { Authorization: `Bearer ${token}` },
+				},
+				env,
+			);
+
+			expect(res.status).toBe(204);
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe(`${env.CORE_API_URL}/meetings/35/finalize`);
+			expect(init.method).toBe("DELETE");
+
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBe("host-1");
+			expect(headers.get("X-User-Name")).toBe(encodeURIComponent("호스트"));
 		});
 	});
 

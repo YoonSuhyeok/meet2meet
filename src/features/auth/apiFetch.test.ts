@@ -52,6 +52,19 @@ describe("apiFetch", () => {
 		expect(win.location.href).toContain("/login?error=session_expired");
 	});
 
+	it("onUnauthorized=none이면 401이어도 리다이렉트하지 않는다", async () => {
+		const original = win.location.href;
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValueOnce(new Response(null, { status: 401 }));
+
+		const res = await apiFetch("/api/auth/me", {}, { onUnauthorized: "none" });
+
+		expect(res.status).toBe(401);
+		expect(fetchSpy).toHaveBeenCalledOnce();
+		expect(win.location.href).toBe(original);
+	});
+
 	it("/login에 이미 있을 땐 무한 리다이렉트를 막는다", async () => {
 		win = createFakeWindow("/login");
 		vi.stubGlobal("window", win);
