@@ -159,19 +159,12 @@ export default function Page() {
     }, [meeting, user]);
 
     useEffect(() => {
-        if (!meeting || typeof window === "undefined") {
+        if (!meeting) {
             setIsClosed(false);
             return;
         }
 
-        const key = `meeting:closed:${meeting.id}`;
-        const sync = () => {
-            setIsClosed(window.localStorage.getItem(key) === "1" || !!meeting.finalSlot);
-        };
-
-        sync();
-        window.addEventListener("storage", sync);
-        return () => window.removeEventListener("storage", sync);
+        setIsClosed(meeting.isClosed);
     }, [meeting]);
 
     const finalizedSlot = meeting?.finalSlot ?? null;

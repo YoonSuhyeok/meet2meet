@@ -168,6 +168,7 @@ export default function Page() {
                 }
                 setMeeting(meetingBody);
                 setFinalized(toMeetingFinal(meetingBody));
+                setIsClosed(meetingBody.isClosed || !!meetingBody.finalSlot);
 
                 const votesRes = await apiFetch(
                     `/api/meetings/${meetingId}/votes`,
@@ -270,13 +271,12 @@ export default function Page() {
             : null;
 
     useEffect(() => {
-        if (!meeting || typeof window === "undefined") {
+        if (!meeting) {
             setIsClosed(false);
             return;
         }
 
-        const key = `meeting:closed:${meeting.id}`;
-        setIsClosed(window.localStorage.getItem(key) === "1" || !!finalized);
+        setIsClosed(meeting.isClosed || !!finalized);
     }, [finalized, meeting]);
 
     const handleFinalize = useCallback(
@@ -311,6 +311,17 @@ export default function Page() {
                     finalizedBy: body.finalizedBy,
                     finalizedAt: body.finalizedAt,
                 });
+                setMeeting((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              isClosed: true,
+                              finalSlot: body.slot,
+                              finalizedBy: body.finalizedBy,
+                              finalizedAt: body.finalizedAt,
+                          }
+                        : prev,
+                );
                 setIsClosed(true);
                 setFinalizeMessage("최종 일정이 확정되었습니다.");
             } catch (err) {
@@ -348,12 +359,16 @@ export default function Page() {
                 }
 
                 setFinalized(null);
-                if (typeof window !== "undefined") {
-                    const key = `meeting:closed:${meeting.id}`;
-                    setIsClosed(window.localStorage.getItem(key) === "1");
-                } else {
-                    setIsClosed(false);
-                }
+                setMeeting((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              finalSlot: undefined,
+                              finalizedBy: undefined,
+                              finalizedAt: undefined,
+                          }
+                        : prev,
+                );
                 setFinalizeMessage("확정이 해제되었습니다.");
             })
             .catch((err) => {
@@ -396,19 +411,57 @@ export default function Page() {
     }, [meeting, shareUrl]);
 
     const handleToggleClosed = useCallback(() => {
-        if (!meeting || finalized || typeof window === "undefined") return;
+        if (!meeting || finalized) return;
 
-        const key = `meeting:closed:${meeting.id}`;
-        setIsClosed((prev) => {
-            const next = !prev;
-            if (next) {
-                window.localStorage.setItem(key, "1");
-            } else {
-                window.localStorage.removeItem(key);
-            }
-            return next;
-        });
-    }, [finalized, meeting]);
+        const nextClosed = !isClosed;
+        setFinalizeBusy(true);
+        setFinalizeMessage(null);
+        void apiFetch(`/api/meetings/${meeting.id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isClosed: nextClosed }),
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    const body = (await res.json().catch(() => null)) as
+                        | { code?: string; message?: string; error?: string }
+                        | null;
+                    throw new Error(
+                        resolveServerErrorMessage(res.status, {
+                            code: body?.code,
+                            message: body?.message ?? body?.error,
+                        }),
+                    );
+                }
+
+                const body = (await res.json()) as {
+                    meetingId: string | number;
+                    isClosed: boolean;
+                    closedAt?: string;
+                };
+                setIsClosed(!!body.isClosed);
+                setMeeting((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              isClosed: !!body.isClosed,
+                              closedAt:
+                                  typeof body.closedAt === "string"
+                                      ? body.closedAt
+                                      : undefined,
+                          }
+                        : prev,
+                );
+            })
+            .catch((err) => {
+                setFinalizeMessage(
+                    err instanceof Error
+                        ? err.message
+                        : "투표 상태 변경에 실패했습니다.",
+                );
+            })
+            .finally(() => setFinalizeBusy(false));
+    }, [finalized, isClosed, meeting]);
 
     if (loading || authLoading) {
         return (

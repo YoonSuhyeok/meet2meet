@@ -167,6 +167,22 @@ describe("meetingRoutes (BFF proxy)", () => {
 			expect(fetchSpy).not.toHaveBeenCalled();
 		});
 
+		it("PATCH /status: 토큰 없으면 401", async () => {
+			const app = buildApp();
+			const res = await app.request(
+				"/api/meetings/35/status",
+				{
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ isClosed: true }),
+				},
+				env,
+			);
+
+			expect(res.status).toBe(401);
+			expect(fetchSpy).not.toHaveBeenCalled();
+		});
+
 		it("PUT /votes: guest participantCode면 비로그인도 통과", async () => {
 			fetchSpy.mockResolvedValue(
 				new Response(JSON.stringify({ message: "ok" }), {
@@ -412,6 +428,52 @@ describe("meetingRoutes (BFF proxy)", () => {
 			const headers = new Headers(init.headers);
 			expect(headers.get("X-User-Id")).toBe("host-1");
 			expect(headers.get("X-User-Name")).toBe(encodeURIComponent("호스트"));
+		});
+
+		it("PATCH /status: 인증되면 본문+사용자 헤더를 업스트림에 전달", async () => {
+			fetchSpy.mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						meetingId: 35,
+						isClosed: true,
+						closedAt: "2026-05-03T12:00:00.000Z",
+					}),
+					{
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					},
+				),
+			);
+			const token = await makeToken({ sub: "host-1", name: "호스트" });
+			const app = buildApp();
+
+			const res = await app.request(
+				"/api/meetings/35/status",
+				{
+					method: "PATCH",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ isClosed: true }),
+				},
+				env,
+			);
+
+			expect(res.status).toBe(200);
+			expect(fetchSpy).toHaveBeenCalledOnce();
+
+			const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe(`${env.CORE_API_URL}/meetings/35/status`);
+			expect(init.method).toBe("PATCH");
+
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBe("host-1");
+			expect(headers.get("X-User-Name")).toBe(encodeURIComponent("호스트"));
+
+			const body = init.body as ArrayBuffer;
+			const text = new TextDecoder().decode(body);
+			expect(JSON.parse(text)).toEqual({ isClosed: true });
 		});
 	});
 

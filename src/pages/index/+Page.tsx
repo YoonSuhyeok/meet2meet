@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch, useAuth } from "@/src/features/auth";
-import { formatDateLabel } from "@/src/pages/meeting/model/time";
+import { formatDateLabel, parseSlotKey } from "@/src/pages/meeting/model/time";
+import { cn } from "@/src/shared";
 
 type MeetingListItem = {
     id: string;
@@ -11,8 +12,11 @@ type MeetingListItem = {
         end: string;
     };
     participantCount: number;
+    isClosed: boolean;
     createdAt?: string;
     updatedAt?: string;
+    finalSlot?: string;
+    finalizedAt?: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -103,6 +107,12 @@ function parseMeetingListItem(value: unknown): MeetingListItem | null {
                 : typeof value.participant_count === "number"
                     ? value.participant_count
                     : 0,
+        isClosed:
+            typeof value.isClosed === "boolean"
+                ? value.isClosed
+                : typeof value.is_closed === "boolean"
+                    ? value.is_closed
+                    : false,
         createdAt:
             typeof value.createdAt === "string"
                 ? value.createdAt
@@ -114,6 +124,18 @@ function parseMeetingListItem(value: unknown): MeetingListItem | null {
                 ? value.updatedAt
                 : typeof value.updated_at === "string"
                     ? value.updated_at
+                    : undefined,
+        finalSlot:
+            typeof value.finalSlot === "string"
+                ? value.finalSlot
+                : typeof value.final_slot === "string"
+                    ? value.final_slot
+                    : undefined,
+        finalizedAt:
+            typeof value.finalizedAt === "string"
+                ? value.finalizedAt
+                : typeof value.finalized_at === "string"
+                    ? value.finalized_at
                     : undefined,
     };
 }
@@ -152,6 +174,13 @@ function formatDateRange(dates: string[]): string {
         return formatDateLabel(sorted[0]);
     }
     return `${formatDateLabel(sorted[0])} - ${formatDateLabel(sorted[sorted.length - 1])} · ${sorted.length}일`;
+}
+
+function formatFinalSlot(value?: string): string | null {
+    if (!value) return null;
+    const parsed = parseSlotKey(value);
+    if (!parsed) return value;
+    return `${formatDateLabel(parsed.date)} ${parsed.time}`;
 }
 
 export default function Page() {
@@ -286,6 +315,29 @@ export default function Page() {
                                             href={`/meeting/${meeting.id}`}
                                             className="block rounded-2xl border border-border/80 bg-card p-4 transition hover:border-primary/40 hover:bg-accent/30"
                                         >
+                                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                                <span
+                                                    className={cn(
+                                                        "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                                                        meeting.isClosed ||
+                                                        meeting.finalizedAt ||
+                                                        meeting.finalSlot
+                                                            ? "bg-amber-100 text-amber-700"
+                                                            : "bg-sky-100 text-sky-700",
+                                                    )}
+                                                >
+                                                    {meeting.isClosed ||
+                                                    meeting.finalizedAt ||
+                                                    meeting.finalSlot
+                                                        ? "투표 마감"
+                                                        : "투표 진행 중"}
+                                                </span>
+                                                {meeting.finalSlot && (
+                                                    <span className="text-[11px] text-muted-foreground">
+                                                        확정: {formatFinalSlot(meeting.finalSlot)}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-base font-semibold text-foreground break-words [overflow-wrap:anywhere]">
                                                 {meeting.title}
                                             </p>

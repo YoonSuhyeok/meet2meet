@@ -20,6 +20,8 @@ export interface MeetingDetailResponse {
     hostId: string;
     hostName: string;
     participantCount: number;
+    isClosed: boolean;
+    closedAt?: string;
     createdAt: string;
     updatedAt: string;
     voteSummary?: SlotSummary[];
@@ -109,6 +111,8 @@ type RawMeetingDetailResponse = {
     hostId?: unknown;
     hostName?: unknown;
     participantCount?: unknown;
+    isClosed?: unknown;
+    closedAt?: unknown;
     createdAt?: unknown;
     updatedAt?: unknown;
     voteSummary?: unknown;
@@ -200,6 +204,8 @@ export function normalizeMeetingDetailResponse(
         hostId: pickString(raw.hostId),
         hostName: pickString(raw.hostName),
         participantCount,
+        isClosed: typeof raw.isClosed === "boolean" ? raw.isClosed : false,
+        closedAt: typeof raw.closedAt === "string" ? raw.closedAt : undefined,
         createdAt:
             typeof raw.createdAt === "string"
                 ? raw.createdAt
