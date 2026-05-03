@@ -113,6 +113,48 @@ describe("meetingRoutes (BFF proxy)", () => {
 			expect(headers.get("X-User-Id")).toBeNull();
 		});
 
+		it("GET: 위조 토큰이 있어도 공개 엔드포인트는 익명으로 통과", async () => {
+			fetchSpy.mockResolvedValue(
+				new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				}),
+			);
+			const app = buildApp();
+			const res = await app.request(
+				"/api/meetings/s/mr021rn4gf",
+				{ headers: { Authorization: "Bearer not.a.real.jwt" } },
+				env,
+			);
+
+			expect(res.status).toBe(200);
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			const init = fetchSpy.mock.calls[0][1] as RequestInit;
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBeNull();
+		});
+
+		it("GET: 만료/손상 쿠키 토큰이 있어도 공개 엔드포인트는 익명으로 통과", async () => {
+			fetchSpy.mockResolvedValue(
+				new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				}),
+			);
+			const app = buildApp();
+			const res = await app.request(
+				"/api/meetings/s/mr021rn4gf",
+				{ headers: { Cookie: "meet2meet_auth=broken.jwt.token" } },
+				env,
+			);
+
+			expect(res.status).toBe(200);
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			const init = fetchSpy.mock.calls[0][1] as RequestInit;
+			const headers = new Headers(init.headers);
+			expect(headers.get("X-User-Id")).toBeNull();
+		});
+
 		it("GET /final: 토큰 없어도 통과", async () => {
 			fetchSpy.mockResolvedValue(
 				new Response(

@@ -131,22 +131,36 @@ export default function Page() {
     }, [shortId]);
 
     useEffect(() => {
-        if (!meeting || !user) {
+        if (!meeting) {
             setMyVote(null);
             setSelected(new Set());
             return;
         }
 
+        const viewerVoteKey = user
+            ? user.id
+            : getGuestParticipantCode(meeting.shortId);
+
         const controller = new AbortController();
         const loadMyVote = async () => {
             try {
-                const res = await fetch(`/api/meetings/${meeting.id}/votes`, {
+                const voteUrl = user
+                    ? `/api/meetings/${meeting.id}/votes`
+                    : `/api/meetings/${meeting.id}/votes?participantCode=${encodeURIComponent(viewerVoteKey)}`;
+
+                const res = await fetch(voteUrl, {
                     signal: controller.signal,
                 });
-                if (!res.ok) return;
+                if (!res.ok) {
+                    setMyVote(null);
+                    setSelected(new Set());
+                    return;
+                }
 
                 const body = (await res.json()) as VoteListResponse;
-                const vote = (body.votes ?? []).find((item) => item.userId === user.id) ?? null;
+                const vote =
+                    (body.votes ?? []).find((item) => item.userId === viewerVoteKey) ??
+                    null;
                 setMyVote(vote);
                 setSelected(buildInitialSelected(vote));
             } catch {

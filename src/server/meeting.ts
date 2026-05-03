@@ -32,6 +32,13 @@ export const meetingRoutes = new Hono<{ Bindings: Bindings }>();
 meetingRoutes.all("/*", async (c) => {
     const coreBase = c.env.CORE_API_URL ?? DEFAULT_CORE_API_URL;
     const url = new URL(c.req.url);
+    const method = c.req.method.toUpperCase();
+    const isMutating = method !== "GET" && method !== "HEAD";
+    const participantCode = (url.searchParams.get("participantCode") ?? "").trim();
+    const isGuestVoteSubmit =
+        method === "PUT" &&
+        /^\/api\/meetings\/[^/]+\/votes$/.test(url.pathname) &&
+        participantCode.startsWith("guest:");
 
     // ── 인증 처리 ──
     const authHeader = c.req.header("Authorization");
@@ -51,23 +58,18 @@ meetingRoutes.all("/*", async (c) => {
             userId = payload.sub;
             userName = payload.name;
         } catch {
-            // 토큰이 유효하지 않으면 401
-            return c.json(
-                { code: "unauthorized", message: "유효하지 않은 인증입니다." },
-                401,
-            );
+            // 공개 GET에서는 깨진 토큰을 무시하고 익명으로 진행한다.
+            // (예: 호스트가 만료 쿠키를 가진 상태로 /m/:shortId 공유 링크 진입)
+            if (isMutating && !isGuestVoteSubmit) {
+                return c.json(
+                    { code: "unauthorized", message: "유효하지 않은 인증입니다." },
+                    401,
+                );
+            }
         }
     }
 
     // 변경 작업이나 보호 엔드포인트는 인증 필수
-    const method = c.req.method.toUpperCase();
-    const isMutating = method !== "GET" && method !== "HEAD";
-    const participantCode = (url.searchParams.get("participantCode") ?? "").trim();
-    const isGuestVoteSubmit =
-        method === "PUT" &&
-        /^\/api\/meetings\/[^/]+\/votes$/.test(url.pathname) &&
-        participantCode.startsWith("guest:");
-
     if (isMutating && !userId && !isGuestVoteSubmit) {
         return c.json(
             { code: "unauthorized", message: "로그인이 필요합니다." },
