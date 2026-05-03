@@ -93,6 +93,8 @@ const PROVIDERS = [
 ] as const;
 
 export function LoginPage({ error }: { error?: string | null }) {
+    const showTestLogin = import.meta.env.DEV;
+
     return (
         <div className="flex min-h-[80vh] items-center justify-center">
             <div className="w-full max-w-sm space-y-8 px-4">
@@ -130,6 +132,34 @@ export function LoginPage({ error }: { error?: string | null }) {
                         </a>
                     ))}
                 </div>
+
+                {showTestLogin && (
+                    <div className="space-y-2 rounded-lg border border-dashed border-border bg-muted/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">
+                            시나리오 테스트용 계정
+                        </p>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            <a
+                                href="/api/auth/test-login?account=host"
+                                className="rounded-md border border-border bg-background px-3 py-2 text-center text-xs font-medium transition-colors hover:bg-accent"
+                            >
+                                테스트 호스트
+                            </a>
+                            <a
+                                href="/api/auth/test-login?account=participant1"
+                                className="rounded-md border border-border bg-background px-3 py-2 text-center text-xs font-medium transition-colors hover:bg-accent"
+                            >
+                                테스트 참가자1
+                            </a>
+                            <a
+                                href="/api/auth/test-login?account=participant2"
+                                className="rounded-md border border-border bg-background px-3 py-2 text-center text-xs font-medium transition-colors hover:bg-accent"
+                            >
+                                테스트 참가자2
+                            </a>
+                        </div>
+                    </div>
+                )}
 
                 {/* 하단 안내 */}
                 <p className="text-center text-xs text-muted-foreground">

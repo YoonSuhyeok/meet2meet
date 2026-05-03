@@ -20,6 +20,13 @@ async function signToken(
 	return sign(payload, secret, "HS256");
 }
 
+function readCookieValue(setCookieHeader: string, cookieName: string) {
+	const match = setCookieHeader.match(
+		new RegExp(`${cookieName}=([^;]+)`),
+	);
+	return match?.[1] ?? null;
+}
+
 describe("authRoutes /me", () => {
 	let fetchSpy: ReturnType<typeof vi.spyOn>;
 
@@ -227,5 +234,90 @@ describe("authRoutes OAuth callback (naver)", () => {
 		expect(res.status).toBe(200);
 		const setCookie = res.headers.get("Set-Cookie") ?? "";
 		expect(setCookie.includes("meet2meet_auth=")).toBe(true);
+	});
+});
+
+describe("authRoutes /test-login", () => {
+	it("localhost에서는 기본 테스트 계정으로 로그인 쿠키를 발급한다", async () => {
+		const res = await authRoutes.request("/test-login", {}, env);
+
+		expect(res.status).toBe(302);
+		expect(res.headers.get("Location")).toBe(`${env.BASE_URL}/auth/callback`);
+
+		const setCookie = res.headers.get("Set-Cookie") ?? "";
+		expect(setCookie.includes("meet2meet_auth=")).toBe(true);
+
+		const token = readCookieValue(setCookie, "meet2meet_auth");
+		expect(token).not.toBeNull();
+
+		const meRes = await authRoutes.request(
+			"/me",
+			{ headers: { Cookie: `meet2meet_auth=${token}` } },
+			env,
+		);
+		expect(meRes.status).toBe(200);
+		expect(await meRes.json()).toMatchObject({
+			id: "test-host-1",
+			name: "테스트 호스트",
+			provider: "test",
+		});
+	});
+
+	it("계정을 지정하면 해당 테스트 계정으로 로그인된다", async () => {
+		const res = await authRoutes.request(
+			"/test-login?account=participant1",
+			{},
+			env,
+		);
+
+		expect(res.status).toBe(302);
+
+		const setCookie = res.headers.get("Set-Cookie") ?? "";
+		const token = readCookieValue(setCookie, "meet2meet_auth");
+		expect(token).not.toBeNull();
+
+		const meRes = await authRoutes.request(
+			"/me",
+			{ headers: { Cookie: `meet2meet_auth=${token}` } },
+			env,
+		);
+		expect(meRes.status).toBe(200);
+		expect(await meRes.json()).toMatchObject({
+			id: "test-participant-1",
+			name: "테스트 참가자 1",
+			provider: "test",
+		});
+	});
+
+	it("로컬이 아닌 BASE_URL에서는 기본적으로 비활성화된다", async () => {
+		const prodLikeEnv = {
+			...env,
+			BASE_URL: "https://meet2meet.app",
+		};
+
+		const res = await authRoutes.request("/test-login", {}, prodLikeEnv);
+		expect(res.status).toBe(404);
+	});
+
+	it("TEST_LOGIN_ENABLED=true면 비로컬 BASE_URL에서도 활성화된다", async () => {
+		const enabledEnv = {
+			...env,
+			BASE_URL: "https://meet2meet.app",
+			TEST_LOGIN_ENABLED: "true",
+		};
+
+		const res = await authRoutes.request("/test-login", {}, enabledEnv);
+		expect(res.status).toBe(302);
+	});
+
+	it("로컬에서 요청 포트가 BASE_URL과 다르면 요청 포트를 리다이렉트에 사용한다", async () => {
+		const res = await authRoutes.request(
+			"http://localhost:3002/test-login",
+			{},
+			env,
+		);
+
+		expect(res.status).toBe(302);
+		expect(res.headers.get("Location")).toBe("http://localhost:3002/auth/callback");
 	});
 });
