@@ -7,6 +7,11 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+    server: {
+        host: "0.0.0.0",
+        // Allow Cloudflare Quick Tunnel domains for real-device HTTPS testing.
+        allowedHosts: [".trycloudflare.com"],
+    },
     plugins: [
         cloudflare({ viteEnvironment: { name: "ssr" } }),
         tailwindcss(),

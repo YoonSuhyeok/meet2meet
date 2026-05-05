@@ -63,3 +63,18 @@ pnpm docs:dev
 - 문서 서버: `http://localhost:3001`
 - OpenAPI 소스: `docs/MEETING_API_SPEC.yaml`
 - 기획 문서/와이어프레임은 실행 시 자동 동기화됩니다.
+
+## PWA Push 테스트 메모
+
+브라우저 구독 생성 시 VAPID 공개키가 필요합니다. 로컬 실행 전 아래 값을 설정하세요.
+
+```powershell
+$env:VITE_VAPID_PUBLIC_KEY = "<your-public-key>"
+pnpm dev --host 0.0.0.0
+```
+
+참고: 현재 서비스워커 등록은 `import.meta.env.DEV`에서 비활성화되어 있어, 실제 PWA 알림 검증은 `pnpm preview -- --host 0.0.0.0` 실행 환경을 권장합니다.
+
+수동 테스트 발송은 BFF 경유 API로 호출할 수 있습니다.
+
+- `POST /api/meetings/:meetingId/push-test-send`

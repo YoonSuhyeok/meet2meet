@@ -13,11 +13,13 @@ function buildApp() {
     return app;
 }
 
-function makeToken(sub = "user-1") {
+function makeToken(sub = "user-1", name = "Tester") {
     const header = Buffer.from(
         JSON.stringify({ alg: "HS256", typ: "JWT" }),
     ).toString("base64");
-    const payload = Buffer.from(JSON.stringify({ sub })).toString("base64");
+    const payload = Buffer.from(JSON.stringify({ sub, name })).toString(
+        "base64",
+    );
     return `${header}.${payload}.signature`;
 }
 
@@ -123,6 +125,7 @@ describe("notificationRoutes (BFF contract)", () => {
 
             const headers = new Headers(init.headers);
             expect(headers.get("X-User-Id")).toBe("user-42");
+            expect(headers.get("X-User-Name")).toBe("Tester");
             expect(headers.get("Content-Type")).toBe("application/json");
             expect(headers.get("Authorization")).toBeNull();
 
@@ -173,6 +176,7 @@ describe("notificationRoutes (BFF contract)", () => {
 
             const headers = new Headers(init.headers);
             expect(headers.get("X-User-Id")).toBe("cookie-user");
+            expect(headers.get("X-User-Name")).toBe("Tester");
         });
 
         it("POST: standalone/permission 미충족이면 400 + requiredAction 반환 (업스트림 호출 없음)", async () => {
@@ -309,6 +313,7 @@ describe("notificationRoutes (BFF contract)", () => {
 
             const headers = new Headers(init.headers);
             expect(headers.get("X-User-Id")).toBe("host-1");
+            expect(headers.get("X-User-Name")).toBe("Tester");
             expect(headers.get("Content-Type")).toBe("application/json");
             expect(parseRequestBody(init)).toEqual({
                 messageOverride: "최종 확정 부탁드려요",
@@ -348,6 +353,57 @@ describe("notificationRoutes (BFF contract)", () => {
             expect(await res.json()).toEqual({
                 error: "manual_nudge_limit_exceeded",
                 message: "이미 수동 독촉을 발송했습니다",
+            });
+        });
+    });
+
+    describe("push-test-send", () => {
+        it("POST: body를 forward하고 200 응답 shape를 보존", async () => {
+            const upstreamResponse = {
+                meetingId: 123,
+                sentCount: 1,
+                failCount: 0,
+                triggeredAt: "2026-05-05T13:30:00Z",
+                results: [{ deviceId: "device-1", success: true }],
+            };
+            fetchSpy.mockResolvedValue(
+                new Response(JSON.stringify(upstreamResponse), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                }),
+            );
+
+            const token = makeToken("user-9");
+            const app = buildApp();
+            const res = await app.request(
+                "/api/meetings/123/push-test-send",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        title: "테스트 알림",
+                        body: "수동 발송",
+                    }),
+                },
+                env,
+            );
+
+            expect(res.status).toBe(200);
+            expect(await res.json()).toEqual(upstreamResponse);
+
+            const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+            expect(url).toBe(`${env.CORE_API_URL}/meetings/123/push-test-send`);
+            expect(init.method).toBe("POST");
+
+            const headers = new Headers(init.headers);
+            expect(headers.get("X-User-Id")).toBe("user-9");
+            expect(headers.get("X-User-Name")).toBe("Tester");
+            expect(parseRequestBody(init)).toEqual({
+                title: "테스트 알림",
+                body: "수동 발송",
             });
         });
     });

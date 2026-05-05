@@ -158,11 +158,17 @@ export function PushNotificationToggle({
 
             // Push subscription 생성
             let subscription: PushSubscription | null = null;
+            const vapidPublicKey = getVapidPublicKey();
+            if (!vapidPublicKey) {
+                setError("VAPID 공개키가 설정되지 않았습니다. 관리자에게 문의해주세요.");
+                setIsLoading(false);
+                return;
+            }
             try {
                 const reg = await navigator.serviceWorker.ready;
                 subscription = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: undefined, // TODO: VAPID public key
+                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
                 });
             } catch (err) {
                 console.error(
@@ -290,4 +296,24 @@ function getDeviceId(): string {
         localStorage.setItem(key, id);
     }
     return id;
+}
+
+function getVapidPublicKey(): string | null {
+    const value = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const normalized = (base64String + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+    const rawData = atob(normalized);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i += 1) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
 }

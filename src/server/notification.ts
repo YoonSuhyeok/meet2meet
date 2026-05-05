@@ -6,6 +6,8 @@ import type {
     RegisterPushSubscriptionResponse,
     SendAttendanceNudgeRequest,
     SendAttendanceNudgeResponse,
+    SendTestPushRequest,
+    SendTestPushResponse,
     SubscriptionErrorResponse,
 } from "@/src/types/notification";
 
@@ -19,14 +21,19 @@ const AUTH_COOKIE_NAME = "meet2meet_auth";
 
 export const notificationRoutes = new Hono<{ Bindings: Bindings }>();
 
+type AuthContext = {
+    userId: string;
+    userName: string;
+};
+
 /**
  * 현재 요청의 인증된 사용자 ID를 추출한다.
  * 인증 실패 시 null 반환.
  */
-function getAuthUserId(
+function getAuthContext(
     authHeader: string | undefined,
     cookieToken: string | undefined,
-): string | null {
+): AuthContext | null {
     const bearerToken = authHeader?.startsWith("Bearer ")
         ? authHeader.slice("Bearer ".length).trim()
         : undefined;
@@ -41,8 +48,14 @@ function getAuthUserId(
         const parts = token.split(".");
         if (parts.length !== 3) return null;
 
-        const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-        return payload.sub as string;
+        const payload = JSON.parse(Buffer.from(parts[1], "base64").toString()) as {
+            sub?: string;
+            name?: string;
+        };
+        const userId = payload.sub?.trim() ?? "";
+        const userName = (payload.name?.trim() || userId).trim();
+        if (!userId || !userName) return null;
+        return { userId, userName };
     } catch {
         return null;
     }
@@ -58,9 +71,9 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
     const meetingId = c.req.param("meetingId");
     const authHeader = c.req.header("Authorization");
     const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
-    const userId = getAuthUserId(authHeader, cookieToken);
+    const auth = getAuthContext(authHeader, cookieToken);
 
-    if (!userId) {
+    if (!auth) {
         return c.json(
             {
                 error: "unauthorized",
@@ -109,7 +122,8 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-User-Id": userId,
+                "X-User-Id": auth.userId,
+                "X-User-Name": encodeURIComponent(auth.userName),
             },
             body: JSON.stringify(body),
         });
@@ -145,9 +159,9 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
     const meetingId = c.req.param("meetingId");
     const authHeader = c.req.header("Authorization");
     const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
-    const userId = getAuthUserId(authHeader, cookieToken);
+    const auth = getAuthContext(authHeader, cookieToken);
 
-    if (!userId) {
+    if (!auth) {
         return c.json(
             {
                 error: "unauthorized",
@@ -165,7 +179,8 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
         const upstreamResp = await fetch(coreUrl, {
             method: "DELETE",
             headers: {
-                "X-User-Id": userId,
+                "X-User-Id": auth.userId,
+                "X-User-Name": encodeURIComponent(auth.userName),
             },
         });
 
@@ -197,9 +212,9 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
     const meetingId = c.req.param("meetingId");
     const authHeader = c.req.header("Authorization");
     const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
-    const userId = getAuthUserId(authHeader, cookieToken);
+    const auth = getAuthContext(authHeader, cookieToken);
 
-    if (!userId) {
+    if (!auth) {
         return c.json(
             {
                 error: "unauthorized",
@@ -217,7 +232,8 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
         const upstreamResp = await fetch(coreUrl, {
             method: "GET",
             headers: {
-                "X-User-Id": userId,
+                "X-User-Id": auth.userId,
+                "X-User-Name": encodeURIComponent(auth.userName),
             },
         });
 
@@ -250,9 +266,9 @@ notificationRoutes.post("/:meetingId/attendance-nudges", async (c) => {
     const meetingId = c.req.param("meetingId");
     const authHeader = c.req.header("Authorization");
     const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
-    const userId = getAuthUserId(authHeader, cookieToken);
+    const auth = getAuthContext(authHeader, cookieToken);
 
-    if (!userId) {
+    if (!auth) {
         return c.json(
             {
                 error: "unauthorized",
@@ -273,7 +289,8 @@ notificationRoutes.post("/:meetingId/attendance-nudges", async (c) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-User-Id": userId,
+                "X-User-Id": auth.userId,
+                "X-User-Name": encodeURIComponent(auth.userName),
             },
             body: JSON.stringify(body),
         });
@@ -287,6 +304,62 @@ notificationRoutes.post("/:meetingId/attendance-nudges", async (c) => {
         return c.json(data, 202 as any); // 202 Accepted (비동기 처리)
     } catch (err) {
         console.error("[notification] upstream POST nudge failed:", err);
+        return c.json(
+            {
+                error: "service_unavailable",
+                message: "서버에 연결할 수 없습니다",
+            },
+            502 as any,
+        );
+    }
+});
+
+/**
+ * POST /api/meetings/:meetingId/push-test-send
+ *
+ * 현재 로그인 사용자의 활성 구독 대상으로 테스트 Push를 발송한다.
+ */
+notificationRoutes.post("/:meetingId/push-test-send", async (c) => {
+    const meetingId = c.req.param("meetingId");
+    const authHeader = c.req.header("Authorization");
+    const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
+    const auth = getAuthContext(authHeader, cookieToken);
+
+    if (!auth) {
+        return c.json(
+            {
+                error: "unauthorized",
+                message: "로그인이 필요합니다",
+            },
+            401 as any,
+        );
+    }
+
+    const body = await c.req.json<SendTestPushRequest>();
+
+    const coreBase = c.env.CORE_API_URL ?? DEFAULT_CORE_API_URL;
+    const coreUrl = `${coreBase.replace(/\/$/, "")}/meetings/${meetingId}/push-test-send`;
+
+    try {
+        const upstreamResp = await fetch(coreUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-User-Id": auth.userId,
+                "X-User-Name": encodeURIComponent(auth.userName),
+            },
+            body: JSON.stringify(body),
+        });
+
+        if (!upstreamResp.ok) {
+            const errorData = await upstreamResp.json();
+            return c.json(errorData, upstreamResp.status as any);
+        }
+
+        const data = (await upstreamResp.json()) as SendTestPushResponse;
+        return c.json(data, 200 as any);
+    } catch (err) {
+        console.error("[notification] upstream POST push-test-send failed:", err);
         return c.json(
             {
                 error: "service_unavailable",

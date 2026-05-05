@@ -131,6 +131,30 @@ export type SendAttendanceNudgeResponse = {
     queuedAt: string; // ISO datetime
 };
 
+/**
+ * POST /api/meetings/:meetingId/push-test-send
+ */
+export type SendTestPushRequest = {
+    title?: string;
+    body?: string;
+    url?: string;
+    tag?: string;
+};
+
+export type SendTestPushResult = {
+    deviceId: string;
+    success: boolean;
+    error?: string;
+};
+
+export type SendTestPushResponse = {
+    meetingId: number;
+    sentCount: number;
+    failCount: number;
+    triggeredAt: string; // ISO datetime
+    results: SendTestPushResult[];
+};
+
 // ── Domain State Types ──
 
 /**
