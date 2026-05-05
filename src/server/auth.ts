@@ -121,7 +121,7 @@ authRoutes.get("/test-login", async (c) => {
     const baseUrl = resolveAuthBaseUrl(c);
 
     if (!isTestLoginEnabled(baseUrl, c.env.TEST_LOGIN_ENABLED)) {
-        return c.json({ error: "not_found" }, 404);
+        return c.redirect("/login?error=test_login_disabled");
     }
 
     const account = getTestAccount(c.req.query("account"));
@@ -360,11 +360,14 @@ function resolveAuthBaseUrl(c: Context<{ Bindings: Bindings }>): string {
         const requestHost = requestUrl.hostname;
         const configuredHost = configuredUrl.hostname;
 
-        if (isLocalHostName(requestHost) && isLocalHostName(configuredHost)) {
-            const requestPort = requestUrl.port;
-            const configuredPort = configuredUrl.port;
+        // BASE_URL이 localhost로 설정된 개발 환경에서는
+        // 사설망/다른 호스트 또는 명시적으로 다른 포트로 접근한 경우 요청 origin을 사용한다.
+        if (isLocalHostName(configuredHost) && isDevRequestHost(requestHost)) {
+            if (requestHost !== configuredHost) {
+                return requestUrl.origin;
+            }
 
-            if (requestPort && requestPort !== configuredPort) {
+            if (requestUrl.port && requestUrl.port !== configuredUrl.port) {
                 return requestUrl.origin;
             }
         }
@@ -384,22 +387,52 @@ function isLocalHostName(hostname: string): boolean {
     );
 }
 
+function isPrivateIpv4Host(hostname: string): boolean {
+    const segments = hostname.split(".");
+    if (segments.length !== 4) {
+        return false;
+    }
+
+    const octets = segments.map((segment) => Number(segment));
+    if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+        return false;
+    }
+
+    if (octets[0] === 10) {
+        return true;
+    }
+
+    if (octets[0] === 127) {
+        return true;
+    }
+
+    if (octets[0] === 192 && octets[1] === 168) {
+        return true;
+    }
+
+    return octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31;
+}
+
+function isDevRequestHost(hostname: string): boolean {
+    return (
+        isLocalHostName(hostname) ||
+        isPrivateIpv4Host(hostname) ||
+        hostname === "host.docker.internal"
+    );
+}
+
 function isSecureCookie(baseUrl: string) {
     return baseUrl.startsWith("https://");
 }
 
 function isTestLoginEnabled(baseUrl: string, flag?: string) {
-    if (flag === "true") {
+    if (flag?.trim().toLowerCase() === "true") {
         return true;
     }
 
     try {
         const hostname = new URL(baseUrl).hostname;
-        return (
-            hostname === "localhost" ||
-            hostname === "127.0.0.1" ||
-            hostname === "[::1]"
-        );
+        return isDevRequestHost(hostname);
     } catch {
         return false;
     }

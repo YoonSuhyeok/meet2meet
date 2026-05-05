@@ -2,10 +2,13 @@ import { cn } from "@/src/shared";
 
 const ERROR_MESSAGES: Record<string, string> = {
     auth_failed: "소셜 인증에 실패했습니다. 다시 시도해주세요.",
-	token_exchange: "인증 처리 중 오류가 발생했습니다.",
-	user_info: "사용자 정보를 가져올 수 없습니다.",
-	server_error: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-	session_expired: "로그인이 만료되었습니다. 다시 로그인해주세요.",
+    invalid_state: "로그인 요청이 만료되었거나 유효하지 않습니다. 다시 시도해주세요.",
+    token_exchange: "인증 처리 중 오류가 발생했습니다.",
+    user_info: "사용자 정보를 가져올 수 없습니다.",
+    server_error: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    session_expired: "로그인이 만료되었습니다. 다시 로그인해주세요.",
+    test_login_disabled:
+        "테스트 계정 로그인이 비활성화되어 있습니다. 개발 환경 또는 설정을 확인해주세요.",
 };
 
 function NaverIcon({ className }: { className?: string }) {
@@ -93,7 +96,9 @@ const PROVIDERS = [
 ] as const;
 
 export function LoginPage({ error }: { error?: string | null }) {
-    const showTestLogin = import.meta.env.DEV;
+    const showTestLogin =
+        import.meta.env.DEV ||
+        import.meta.env.VITE_TEST_LOGIN_ENABLED === "true";
 
     return (
         <div className="flex min-h-[80vh] items-center justify-center">

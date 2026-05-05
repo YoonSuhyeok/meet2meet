@@ -296,7 +296,8 @@ describe("authRoutes /test-login", () => {
 		};
 
 		const res = await authRoutes.request("/test-login", {}, prodLikeEnv);
-		expect(res.status).toBe(404);
+		expect(res.status).toBe(302);
+		expect(res.headers.get("Location")).toBe("/login?error=test_login_disabled");
 	});
 
 	it("TEST_LOGIN_ENABLED=true면 비로컬 BASE_URL에서도 활성화된다", async () => {
@@ -319,5 +320,18 @@ describe("authRoutes /test-login", () => {
 
 		expect(res.status).toBe(302);
 		expect(res.headers.get("Location")).toBe("http://localhost:3002/auth/callback");
+	});
+
+	it("사설망 IP로 접근한 로컬 개발 환경에서도 테스트 로그인 가능", async () => {
+		const res = await authRoutes.request(
+			"http://192.168.0.20:4173/test-login",
+			{},
+			env,
+		);
+
+		expect(res.status).toBe(302);
+		expect(res.headers.get("Location")).toBe("http://192.168.0.20:4173/auth/callback");
+		const setCookie = res.headers.get("Set-Cookie") ?? "";
+		expect(setCookie.includes("meet2meet_auth=")).toBe(true);
 	});
 });

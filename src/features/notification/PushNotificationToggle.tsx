@@ -76,6 +76,8 @@ export function PushNotificationToggle({
         try {
             const resp = await apiFetch(
                 `/api/meetings/${meetingId}/push-subscriptions/status`,
+                {},
+                { onUnauthorized: "none" },
             );
             if (resp.ok) {
                 const data = (await resp.json()) as PushSubscriptionStatus;

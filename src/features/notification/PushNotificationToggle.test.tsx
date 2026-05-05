@@ -92,6 +92,12 @@ describe("PushNotificationToggle", () => {
         // 구독 상태에선 notice 없음
         expect(screen.queryByText(/로그인/)).toBeNull();
         expect(screen.queryByText(/PWA|설치/)).toBeNull();
+
+        expect(mockApiFetch).toHaveBeenCalledWith(
+            "/api/meetings/meet-1/push-subscriptions/status",
+            {},
+            { onUnauthorized: "none" },
+        );
     });
 
     it("non-standalone 상태: PWA 설치 안내 notice 표시", async () => {
