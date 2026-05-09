@@ -26,6 +26,19 @@ type AuthContext = {
     userName: string;
 };
 
+async function drainRequestBodyIfNeeded(c: { req: { method: string; raw: Request } }) {
+    const method = c.req.method.toUpperCase();
+    if (method !== "POST" && method !== "PUT" && method !== "PATCH") {
+        return;
+    }
+
+    try {
+        await c.req.raw.arrayBuffer();
+    } catch {
+        // 본문이 이미 소비되었거나 비어있으면 무시
+    }
+}
+
 /**
  * 현재 요청의 인증된 사용자 ID를 추출한다.
  * 인증 실패 시 null 반환.
@@ -74,6 +87,7 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
     const auth = getAuthContext(authHeader, cookieToken);
 
     if (!auth) {
+        await drainRequestBodyIfNeeded(c);
         return c.json(
             {
                 error: "unauthorized",
@@ -159,6 +173,7 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
     const meetingId = c.req.param("meetingId");
     const authHeader = c.req.header("Authorization");
     const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
+    const deviceID = (c.req.header("X-Device-Id") ?? "").trim();
     const auth = getAuthContext(authHeader, cookieToken);
 
     if (!auth) {
@@ -181,6 +196,7 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
             headers: {
                 "X-User-Id": auth.userId,
                 "X-User-Name": encodeURIComponent(auth.userName),
+                "X-Device-Id": deviceID,
             },
         });
 
@@ -210,8 +226,10 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
  */
 notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
     const meetingId = c.req.param("meetingId");
+    const meetingIdNum = Number.parseInt(meetingId, 10);
     const authHeader = c.req.header("Authorization");
     const cookieToken = getCookie(c, AUTH_COOKIE_NAME);
+    const deviceID = (c.req.header("X-Device-Id") ?? "").trim();
     const auth = getAuthContext(authHeader, cookieToken);
 
     if (!auth) {
@@ -221,6 +239,26 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
                 message: "로그인이 필요합니다",
             },
             401 as any,
+        );
+    }
+
+    // 구번들/캐시된 클라이언트는 X-Device-Id 없이 요청할 수 있다.
+    // 이 경우 업스트림 400 대신 미구독 기본 상태를 반환해 UX를 유지한다.
+    if (!deviceID) {
+        return c.json(
+            {
+                meetingId: Number.isNaN(meetingIdNum) ? 0 : meetingIdNum,
+                userId: auth.userId,
+                deviceId: "",
+                isSubscribed: false,
+                isStandalone: false,
+                notificationPermissionStatus: "default",
+                installFlagStatus: "disabled",
+                pushEndpointStatus: "invalid",
+                lastVerifiedAt: new Date(0).toISOString(),
+                lastNudgeAt: null,
+            } as PushSubscriptionStatus,
+            200 as any,
         );
     }
 
@@ -234,6 +272,7 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
             headers: {
                 "X-User-Id": auth.userId,
                 "X-User-Name": encodeURIComponent(auth.userName),
+                "X-Device-Id": deviceID,
             },
         });
 
@@ -269,6 +308,7 @@ notificationRoutes.post("/:meetingId/attendance-nudges", async (c) => {
     const auth = getAuthContext(authHeader, cookieToken);
 
     if (!auth) {
+        await drainRequestBodyIfNeeded(c);
         return c.json(
             {
                 error: "unauthorized",
@@ -326,6 +366,7 @@ notificationRoutes.post("/:meetingId/push-test-send", async (c) => {
     const auth = getAuthContext(authHeader, cookieToken);
 
     if (!auth) {
+        await drainRequestBodyIfNeeded(c);
         return c.json(
             {
                 error: "unauthorized",

@@ -362,12 +362,16 @@ function resolveAuthBaseUrl(c: Context<{ Bindings: Bindings }>): string {
 
         // BASE_URL이 localhost로 설정된 개발 환경에서는
         // 사설망/다른 호스트 또는 명시적으로 다른 포트로 접근한 경우 요청 origin을 사용한다.
-        if (isLocalHostName(configuredHost) && isDevRequestHost(requestHost)) {
-            if (requestHost !== configuredHost) {
-                return requestUrl.origin;
-            }
+        if (isLocalHostName(configuredHost)) {
+            const useRequestOrigin =
+                requestHost !== configuredHost ||
+                (requestUrl.port && requestUrl.port !== configuredUrl.port);
 
-            if (requestUrl.port && requestUrl.port !== configuredUrl.port) {
+            if (useRequestOrigin && (isDevRequestHost(requestHost) || isTunnelHost(requestHost))) {
+                if (isTunnelHost(requestHost)) {
+                    const portSuffix = requestUrl.port ? `:${requestUrl.port}` : "";
+                    return `https://${requestHost}${portSuffix}`;
+                }
                 return requestUrl.origin;
             }
         }
@@ -418,6 +422,14 @@ function isDevRequestHost(hostname: string): boolean {
         isLocalHostName(hostname) ||
         isPrivateIpv4Host(hostname) ||
         hostname === "host.docker.internal"
+    );
+}
+
+function isTunnelHost(hostname: string): boolean {
+    const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
+    return (
+        normalized === "trycloudflare.com" ||
+        normalized.endsWith(".trycloudflare.com")
     );
 }
 

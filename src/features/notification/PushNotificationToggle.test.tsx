@@ -95,7 +95,11 @@ describe("PushNotificationToggle", () => {
 
         expect(mockApiFetch).toHaveBeenCalledWith(
             "/api/meetings/meet-1/push-subscriptions/status",
-            {},
+            {
+                headers: {
+                    "X-Device-Id": expect.stringMatching(/^device_/),
+                },
+            },
             { onUnauthorized: "none" },
         );
     });

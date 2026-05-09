@@ -149,6 +149,36 @@ describe("authRoutes OAuth callback (naver)", () => {
 		expect(setCookie.includes("HttpOnly")).toBe(true);
 	});
 
+	it("터널 도메인으로 접근하면 OAuth redirect_uri에 터널 origin을 사용한다", async () => {
+		const res = await authRoutes.request(
+			"https://dist-temperature-senate-numbers.trycloudflare.com/kakao",
+			{},
+			env,
+		);
+
+		expect(res.status).toBe(302);
+		const location = res.headers.get("Location") ?? "";
+		const redirectUri = new URL(location).searchParams.get("redirect_uri");
+		expect(redirectUri).toBe(
+			"https://dist-temperature-senate-numbers.trycloudflare.com/api/auth/kakao/callback",
+		);
+	});
+
+	it("프록시 내부에서 http로 전달돼도 터널 host는 https callback을 사용한다", async () => {
+		const res = await authRoutes.request(
+			"http://dist-temperature-senate-numbers.trycloudflare.com/kakao",
+			{},
+			env,
+		);
+
+		expect(res.status).toBe(302);
+		const location = res.headers.get("Location") ?? "";
+		const redirectUri = new URL(location).searchParams.get("redirect_uri");
+		expect(redirectUri).toBe(
+			"https://dist-temperature-senate-numbers.trycloudflare.com/api/auth/kakao/callback",
+		);
+	});
+
 	it("state 없으면 /login?error=invalid_state로 리다이렉트", async () => {
 		const res = await authRoutes.request("/naver/callback", {}, env);
 		expect(res.status).toBe(302);

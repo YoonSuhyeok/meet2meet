@@ -160,6 +160,7 @@ describe("notificationRoutes (BFF contract)", () => {
                 {
                     headers: {
                         Cookie: `meet2meet_auth=${token}`,
+                        "X-Device-Id": "device-1",
                     },
                 },
                 env,
@@ -177,6 +178,37 @@ describe("notificationRoutes (BFF contract)", () => {
             const headers = new Headers(init.headers);
             expect(headers.get("X-User-Id")).toBe("cookie-user");
             expect(headers.get("X-User-Name")).toBe("Tester");
+            expect(headers.get("X-Device-Id")).toBe("device-1");
+        });
+
+        it("GET status: X-Device-Id 누락 시 업스트림 호출 없이 미구독 기본값 반환", async () => {
+            const token = makeToken("cookie-user");
+            const app = buildApp();
+
+            const res = await app.request(
+                "/api/meetings/123/push-subscriptions/status",
+                {
+                    headers: {
+                        Cookie: `meet2meet_auth=${token}`,
+                    },
+                },
+                env,
+            );
+
+            expect(res.status).toBe(200);
+            expect(await res.json()).toEqual({
+                meetingId: 123,
+                userId: "cookie-user",
+                deviceId: "",
+                isSubscribed: false,
+                isStandalone: false,
+                notificationPermissionStatus: "default",
+                installFlagStatus: "disabled",
+                pushEndpointStatus: "invalid",
+                lastVerifiedAt: "1970-01-01T00:00:00.000Z",
+                lastNudgeAt: null,
+            });
+            expect(fetchSpy).not.toHaveBeenCalled();
         });
 
         it("POST: standalone/permission 미충족이면 400 + requiredAction 반환 (업스트림 호출 없음)", async () => {
@@ -234,7 +266,10 @@ describe("notificationRoutes (BFF contract)", () => {
             const res = await app.request(
                 "/api/meetings/999/push-subscriptions/status",
                 {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "X-Device-Id": "device-1",
+                    },
                 },
                 env,
             );

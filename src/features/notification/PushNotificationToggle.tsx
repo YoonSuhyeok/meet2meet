@@ -73,10 +73,15 @@ export function PushNotificationToggle({
      * 서버에서 구독 상태 조회
      */
     async function fetchSubscriptionStatus() {
+        const deviceId = getDeviceId();
         try {
             const resp = await apiFetch(
                 `/api/meetings/${meetingId}/push-subscriptions/status`,
-                {},
+                {
+                    headers: {
+                        "X-Device-Id": deviceId,
+                    },
+                },
                 { onUnauthorized: "none" },
             );
             if (resp.ok) {
@@ -226,9 +231,15 @@ export function PushNotificationToggle({
         setError(null);
 
         try {
+            const deviceId = getDeviceId();
             const resp = await apiFetch(
                 `/api/meetings/${meetingId}/push-subscriptions`,
-                { method: "DELETE" },
+                {
+                    method: "DELETE",
+                    headers: {
+                        "X-Device-Id": deviceId,
+                    },
+                },
             );
 
             if (resp.ok) {

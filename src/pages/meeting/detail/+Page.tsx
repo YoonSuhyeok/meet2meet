@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { usePageContext } from "vike-react/usePageContext";
-import { apiFetch, useAuth } from "@/src/features/auth";
+import { apiFetch, savePostLoginRedirect, useAuth } from "@/src/features/auth";
 import { AttendanceNudgeButton } from "@/src/features/notification/AttendanceNudgeButton";
+import { PushNotificationToggle } from "@/src/features/notification";
 import {
     createTimeSlotsFromRange,
     formatDateLabel,
@@ -463,6 +464,12 @@ export default function Page() {
             .finally(() => setFinalizeBusy(false));
     }, [finalized, isClosed, meeting]);
 
+    const handleLoginRequiredForNotification = useCallback(() => {
+        if (!meeting) return;
+        savePostLoginRedirect(`/meeting/${meeting.id}`);
+        window.location.href = "/login";
+    }, [meeting]);
+
     if (loading || authLoading) {
         return (
             <div className="space-y-4 py-12">
@@ -618,6 +625,21 @@ export default function Page() {
                             {maxCount}명
                         </p>
                     </div>
+                </div>
+            </section>
+
+            <section className="rounded-[1.75rem] border border-border/70 bg-background p-6 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.42)] sm:p-7">
+                <h2 className="text-lg font-semibold text-foreground">미팅 알림</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    이 미팅의 일정 변경과 시작 전 안내를 PushNotification으로 받을 수 있습니다.
+                </p>
+                <div className="mt-4">
+                    <PushNotificationToggle
+                        meetingId={meeting.id}
+                        isLoggedIn={!!user}
+                        isFinalized={!!finalized}
+                        onLoginRequired={handleLoginRequiredForNotification}
+                    />
                 </div>
             </section>
 
