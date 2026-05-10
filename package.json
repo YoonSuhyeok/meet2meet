@@ -3,6 +3,7 @@
         "dev": "vike dev",
         "build": "vike build",
         "preview": "vike build && vike preview",
+        "verify:mobile-pwa": "node scripts/verify-mobile-pwa.mjs",
         "deploy": "vike build && wrangler deploy",
         "typecheck": "tsgo --noEmit",
         "lint": "biome check .",

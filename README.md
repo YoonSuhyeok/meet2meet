@@ -78,3 +78,27 @@ pnpm dev --host 0.0.0.0
 수동 테스트 발송은 BFF 경유 API로 호출할 수 있습니다.
 
 - `POST /api/meetings/:meetingId/push-test-send`
+
+## Mobile PWA 단일 검증 커맨드
+
+Named Tunnel 기반 실기기 검증 흐름은 아래 커맨드로 실행합니다.
+
+```bash
+pnpm verify:mobile-pwa
+```
+
+동작 순서:
+
+1. 필수 환경값(`TUNNEL_BASE_URL`, `TUNNEL_NAME`) 확인
+2. 백엔드 헬스체크(`CORE_API_URL/healthz` 기본)
+3. 프론트 `build` 강제 실행
+4. preview 서버(`127.0.0.1:4173`, strictPort) 기동
+5. cloudflared named tunnel 기동
+6. 실기기 수동 체크리스트 확인 입력
+
+옵션:
+
+- `--verbose`: 상세 로그 출력
+- `--keep`: 종료 시 preview/cloudflared 프로세스 유지
+
+환경값 템플릿은 `.dev.vars.example`를 참고하세요.

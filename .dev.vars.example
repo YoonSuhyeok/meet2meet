@@ -1,0 +1,22 @@
+# Core app
+JWT_SECRET=change-this-to-a-long-random-string
+BASE_URL=http://localhost:3000
+CORE_API_URL=http://localhost:8080
+
+# OAuth
+NAVER_CLIENT_ID=
+NAVER_CLIENT_SECRET=
+KAKAO_CLIENT_ID=
+KAKAO_CLIENT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Mobile PWA verification (named tunnel)
+TUNNEL_BASE_URL=https://your-fixed-tunnel-domain.example.com
+TUNNEL_NAME=your-tunnel-name
+# Preferred: explicit credentials path
+TUNNEL_CREDENTIALS_FILE=
+# Optional fallback helper when credentials path is omitted
+TUNNEL_ID=
+# Optional explicit backend health endpoint
+# BACKEND_HEALTH_URL=http://localhost:8080/healthz
