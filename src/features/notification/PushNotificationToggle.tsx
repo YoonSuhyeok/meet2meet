@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
-import type {
-    PushSubscriptionStatus,
-    SubscriptionErrorResponse,
-} from "@/src/types/notification";
+import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/src/features/auth";
+import {
+    detectStandaloneMode,
+    getDeviceId,
+    getNotificationPermissionStatus,
+    getOrCreatePushSubscription,
+    getVapidPublicKey,
+    supportsWebPush,
+    unsubscribePushSubscription,
+} from "@/src/features/notification/pushClient";
 import {
     consumeSubscriptionIntent,
     saveSubscriptionIntent,
@@ -13,6 +18,10 @@ import {
     getToggleNotice,
     resolveSubscriptionErrorMessage,
 } from "@/src/features/notification/toggleModel";
+import type {
+    PushSubscriptionStatus,
+    SubscriptionErrorResponse,
+} from "@/src/types/notification";
 import styles from "./PushNotificationToggle.module.css";
 
 interface PushNotificationToggleProps {
@@ -47,32 +56,7 @@ export function PushNotificationToggle({
         isSubscribed,
     });
 
-    // 초기화: 브라우저 context 확인
-    useEffect(() => {
-        setStatusLoaded(false);
-        const isStandaloneMode =
-            window.matchMedia("(display-mode: standalone)").matches ||
-            (navigator as any).standalone === true;
-        setIsStandalone(isStandaloneMode);
-
-        if ("Notification" in window) {
-            setPermissionStatus(
-                Notification.permission as NotificationPermission,
-            );
-        }
-
-        // 로그인 상태일 때만 서버에서 상태 조회
-        if (isLoggedIn) {
-            fetchSubscriptionStatus();
-        } else {
-            setStatusLoaded(true);
-        }
-    }, [isLoggedIn, meetingId]);
-
-    /**
-     * 서버에서 구독 상태 조회
-     */
-    async function fetchSubscriptionStatus() {
+    const fetchSubscriptionStatus = useCallback(async () => {
         const deviceId = getDeviceId();
         try {
             const resp = await apiFetch(
@@ -98,55 +82,25 @@ export function PushNotificationToggle({
         } finally {
             setStatusLoaded(true);
         }
-    }
+    }, [meetingId]);
 
-    useEffect(() => {
-        if (!isLoggedIn) return;
-        if (!statusLoaded) return;
-        if (isSubscribed) return;
-
-        const shouldReplay = consumeSubscriptionIntent(meetingId);
-        if (shouldReplay) {
-            void subscribe();
-        }
-    }, [isLoggedIn, statusLoaded, isSubscribed, meetingId]);
-
-    /**
-     * 토글 클릭 핸들러
-     */
-    async function handleToggle() {
-        // 로그인 필요
-        if (!isLoggedIn) {
-            saveSubscriptionIntent(meetingId);
-            onLoginRequired?.();
-            return;
-        }
-
-        // 이미 구독 중이면 해지
-        if (isSubscribed) {
-            await unsubscribe();
-        } else {
-            // 아니면 구독
-            await subscribe();
-        }
-    }
-
-    /**
-     * 구독 등록
-     */
-    async function subscribe() {
+    const subscribe = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
         try {
-            // Standalone 모드 확인
             if (!isStandalone) {
                 setError("PWA를 앱으로 설치한 후 사용 가능합니다");
                 setIsLoading(false);
                 return;
             }
 
-            // 알림 권한 요청
+            if (!supportsWebPush()) {
+                setError("이 브라우저에서는 푸시 알림을 지원하지 않습니다");
+                setIsLoading(false);
+                return;
+            }
+
             let newPermStatus: NotificationPermission =
                 permissionStatus ?? "default";
             if ("Notification" in window && permissionStatus !== "granted") {
@@ -161,23 +115,22 @@ export function PushNotificationToggle({
                 }
             }
 
-            // Push subscription 생성
-            let subscription: PushSubscription | null = null;
             const vapidPublicKey = getVapidPublicKey();
             if (!vapidPublicKey) {
-                setError("VAPID 공개키가 설정되지 않았습니다. 관리자에게 문의해주세요.");
+                setError(
+                    "VAPID 공개키가 설정되지 않았습니다. 관리자에게 문의해주세요.",
+                );
                 setIsLoading(false);
                 return;
             }
+
+            let subscription: PushSubscription;
             try {
-                const reg = await navigator.serviceWorker.ready;
-                subscription = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-                });
+                subscription =
+                    await getOrCreatePushSubscription(vapidPublicKey);
             } catch (err) {
                 console.error(
-                    "[notification] pushManager.subscribe failed:",
+                    "[notification] getOrCreatePushSubscription failed:",
                     err,
                 );
                 setError("알림 구독 등록에 실패했습니다");
@@ -185,13 +138,6 @@ export function PushNotificationToggle({
                 return;
             }
 
-            if (!subscription) {
-                setError("Push subscription을 생성할 수 없습니다");
-                setIsLoading(false);
-                return;
-            }
-
-            // 서버에 구독 등록
             const req = buildRegisterRequest({
                 isStandalone,
                 permissionStatus: newPermStatus,
@@ -221,12 +167,9 @@ export function PushNotificationToggle({
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [isStandalone, meetingId, permissionStatus]);
 
-    /**
-     * 구독 해지
-     */
-    async function unsubscribe() {
+    const unsubscribe = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
@@ -243,6 +186,14 @@ export function PushNotificationToggle({
             );
 
             if (resp.ok) {
+                try {
+                    await unsubscribePushSubscription();
+                } catch (err) {
+                    console.error(
+                        "[notification] unsubscribePushSubscription failed:",
+                        err,
+                    );
+                }
                 setIsSubscribed(false);
             } else {
                 setError("구독 해지 실패");
@@ -252,6 +203,43 @@ export function PushNotificationToggle({
             setError("서버 오류로 구독 해지할 수 없습니다");
         } finally {
             setIsLoading(false);
+        }
+    }, [meetingId]);
+
+    useEffect(() => {
+        setStatusLoaded(false);
+        setIsStandalone(detectStandaloneMode());
+        setPermissionStatus(getNotificationPermissionStatus());
+
+        if (isLoggedIn) {
+            void fetchSubscriptionStatus();
+        } else {
+            setStatusLoaded(true);
+        }
+    }, [fetchSubscriptionStatus, isLoggedIn]);
+
+    useEffect(() => {
+        if (!isLoggedIn) return;
+        if (!statusLoaded) return;
+        if (isSubscribed) return;
+
+        const shouldReplay = consumeSubscriptionIntent(meetingId);
+        if (shouldReplay) {
+            void subscribe();
+        }
+    }, [isLoggedIn, isSubscribed, meetingId, statusLoaded, subscribe]);
+
+    async function handleToggle() {
+        if (!isLoggedIn) {
+            saveSubscriptionIntent(meetingId);
+            onLoginRequired?.();
+            return;
+        }
+
+        if (isSubscribed) {
+            await unsubscribe();
+        } else {
+            await subscribe();
         }
     }
 
@@ -294,37 +282,4 @@ export function PushNotificationToggle({
             {notice && <div className={styles.notice}>{notice}</div>}
         </div>
     );
-}
-
-/**
- * 간단한 device ID 생성 (localStorage 기반)
- */
-function getDeviceId(): string {
-    const key = "meet2meet_device_id";
-    let id = localStorage.getItem(key);
-    if (!id) {
-        id = `device_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-        localStorage.setItem(key, id);
-    }
-    return id;
-}
-
-function getVapidPublicKey(): string | null {
-    const value = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-    if (typeof value !== "string") return null;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const normalized = (base64String + padding)
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-    const rawData = atob(normalized);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; i += 1) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
 }

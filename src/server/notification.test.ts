@@ -239,11 +239,61 @@ describe("notificationRoutes (BFF contract)", () => {
 
             expect(res.status).toBe(400);
             expect(await res.json()).toEqual({
-                error: "pwа_installation_required",
+                error: "pwa_installation_required",
                 message: "푸시 알림을 받기 위한 조건이 충족되지 않았습니다",
                 requiredAction: "install",
             });
             expect(fetchSpy).not.toHaveBeenCalled();
+        });
+
+        it("GET status: Core field 이름이 달라도 BFF contract로 정규화한다", async () => {
+            fetchSpy.mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        meetingId: 123,
+                        userId: "user-1",
+                        deviceId: "device-1",
+                        isSubscribed: true,
+                        isStandalone: true,
+                        notificationPermissionStatus: "granted",
+                        installFlagStatus: "active",
+                        pushSubscriptionEndpointStatus: "active",
+                        lastVerifiedAt: "2026-05-02T12:00:00Z",
+                        lastNudgeAt: null,
+                    }),
+                    {
+                        status: 200,
+                        headers: { "Content-Type": "application/json" },
+                    },
+                ),
+            );
+
+            const token = makeToken("user-1");
+            const app = buildApp();
+            const res = await app.request(
+                "/api/meetings/123/push-subscriptions/status",
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "X-Device-Id": "device-1",
+                    },
+                },
+                env,
+            );
+
+            expect(res.status).toBe(200);
+            expect(await res.json()).toEqual({
+                meetingId: 123,
+                userId: "user-1",
+                deviceId: "device-1",
+                isSubscribed: true,
+                isStandalone: true,
+                notificationPermissionStatus: "granted",
+                installFlagStatus: "active",
+                pushEndpointStatus: "active",
+                lastVerifiedAt: "2026-05-02T12:00:00Z",
+                lastNudgeAt: null,
+            });
         });
 
         it("GET status: 업스트림 에러 응답을 status/body 그대로 매핑", async () => {

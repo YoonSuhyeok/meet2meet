@@ -67,7 +67,7 @@ export type RegisterPushSubscriptionResponse = {
 };
 
 export type SubscriptionErrorCode =
-    | "pwа_installation_required"
+    | "pwa_installation_required"
     | "notification_permission_required"
     | "re_login_required"
     | "validation_error"

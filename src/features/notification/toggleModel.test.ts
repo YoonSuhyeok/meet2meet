@@ -59,7 +59,7 @@ describe("resolveSubscriptionErrorMessage", () => {
     it("maps requiredAction to user guidance", () => {
         expect(
             resolveSubscriptionErrorMessage({
-                error: "pwа_installation_required",
+                error: "pwa_installation_required",
                 message: "설치 필요",
                 requiredAction: "install",
             }),

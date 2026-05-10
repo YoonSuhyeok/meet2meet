@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type {
     PushSubscriptionStatus,
     RegisterPushSubscriptionRequest,
@@ -26,7 +27,21 @@ type AuthContext = {
     userName: string;
 };
 
-async function drainRequestBodyIfNeeded(c: { req: { method: string; raw: Request } }) {
+type UpstreamPushSubscriptionStatus = Omit<
+    PushSubscriptionStatus,
+    "pushEndpointStatus"
+> & {
+    pushEndpointStatus?: PushSubscriptionStatus["pushEndpointStatus"];
+    pushSubscriptionEndpointStatus?: PushSubscriptionStatus["pushEndpointStatus"];
+};
+
+function asStatusCode(status: number): ContentfulStatusCode {
+    return status as ContentfulStatusCode;
+}
+
+async function drainRequestBodyIfNeeded(c: {
+    req: { method: string; raw: Request };
+}) {
     const method = c.req.method.toUpperCase();
     if (method !== "POST" && method !== "PUT" && method !== "PATCH") {
         return;
@@ -61,7 +76,9 @@ function getAuthContext(
         const parts = token.split(".");
         if (parts.length !== 3) return null;
 
-        const payload = JSON.parse(Buffer.from(parts[1], "base64").toString()) as {
+        const payload = JSON.parse(
+            Buffer.from(parts[1], "base64").toString(),
+        ) as {
             sub?: string;
             name?: string;
         };
@@ -93,7 +110,7 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
                 error: "unauthorized",
                 message: "로그인이 필요합니다",
             },
-            401 as any,
+            401,
         );
     }
 
@@ -116,7 +133,7 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
 
     if (errors.length > 0) {
         const resp: SubscriptionErrorResponse = {
-            error: "pwа_installation_required",
+            error: "pwa_installation_required",
             message: "푸시 알림을 받기 위한 조건이 충족되지 않았습니다",
             requiredAction: !body.isStandalone
                 ? "install"
@@ -124,7 +141,7 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
                   ? "grant-permission"
                   : undefined,
         };
-        return c.json(resp, 400 as any);
+        return c.json(resp, 400);
     }
 
     // ── Core API로 프록시 (실제 저장) ──
@@ -144,12 +161,12 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
 
         if (!upstreamResp.ok) {
             const errorData = await upstreamResp.json();
-            return c.json(errorData, upstreamResp.status as any);
+            return c.json(errorData, asStatusCode(upstreamResp.status));
         }
 
         const data =
             (await upstreamResp.json()) as RegisterPushSubscriptionResponse;
-        return c.json(data, 201 as any);
+        return c.json(data, 201);
     } catch (err) {
         console.error("[notification] upstream fetch failed:", err);
         return c.json(
@@ -158,7 +175,7 @@ notificationRoutes.post("/:meetingId/push-subscriptions", async (c) => {
                 message:
                     "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.",
             },
-            502 as any,
+            502,
         );
     }
 });
@@ -182,7 +199,7 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
                 error: "unauthorized",
                 message: "로그인이 필요합니다",
             },
-            401 as any,
+            401,
         );
     }
 
@@ -201,11 +218,11 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
         });
 
         if (upstreamResp.ok) {
-            return c.json({}, 204 as any);
+            return c.body(null, 204);
         }
 
         const errorData = await upstreamResp.json();
-        return c.json(errorData, upstreamResp.status as any);
+        return c.json(errorData, asStatusCode(upstreamResp.status));
     } catch (err) {
         console.error("[notification] upstream DELETE failed:", err);
         return c.json(
@@ -213,7 +230,7 @@ notificationRoutes.delete("/:meetingId/push-subscriptions", async (c) => {
                 error: "service_unavailable",
                 message: "서버에 연결할 수 없습니다",
             },
-            502 as any,
+            502,
         );
     }
 });
@@ -238,7 +255,7 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
                 error: "unauthorized",
                 message: "로그인이 필요합니다",
             },
-            401 as any,
+            401,
         );
     }
 
@@ -258,7 +275,7 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
                 lastVerifiedAt: new Date(0).toISOString(),
                 lastNudgeAt: null,
             } as PushSubscriptionStatus,
-            200 as any,
+            200,
         );
     }
 
@@ -278,11 +295,12 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
 
         if (!upstreamResp.ok) {
             const errorData = await upstreamResp.json();
-            return c.json(errorData, upstreamResp.status as any);
+            return c.json(errorData, asStatusCode(upstreamResp.status));
         }
 
-        const data = (await upstreamResp.json()) as PushSubscriptionStatus;
-        return c.json(data, 200 as any);
+        const data =
+            (await upstreamResp.json()) as UpstreamPushSubscriptionStatus;
+        return c.json(normalizePushSubscriptionStatus(data), 200);
     } catch (err) {
         console.error("[notification] upstream GET status failed:", err);
         return c.json(
@@ -290,10 +308,23 @@ notificationRoutes.get("/:meetingId/push-subscriptions/status", async (c) => {
                 error: "service_unavailable",
                 message: "서버에 연결할 수 없습니다",
             },
-            502 as any,
+            502,
         );
     }
 });
+
+function normalizePushSubscriptionStatus(
+    status: UpstreamPushSubscriptionStatus,
+): PushSubscriptionStatus {
+    const { pushSubscriptionEndpointStatus: _ignored, ...rest } = status;
+    return {
+        ...rest,
+        pushEndpointStatus:
+            status.pushEndpointStatus ??
+            status.pushSubscriptionEndpointStatus ??
+            "invalid",
+    };
+}
 
 /**
  * POST /api/meetings/:meetingId/attendance-nudges
@@ -314,7 +345,7 @@ notificationRoutes.post("/:meetingId/attendance-nudges", async (c) => {
                 error: "unauthorized",
                 message: "로그인이 필요합니다",
             },
-            401 as any,
+            401,
         );
     }
 
@@ -337,11 +368,11 @@ notificationRoutes.post("/:meetingId/attendance-nudges", async (c) => {
 
         if (!upstreamResp.ok) {
             const errorData = await upstreamResp.json();
-            return c.json(errorData, upstreamResp.status as any);
+            return c.json(errorData, asStatusCode(upstreamResp.status));
         }
 
         const data = (await upstreamResp.json()) as SendAttendanceNudgeResponse;
-        return c.json(data, 202 as any); // 202 Accepted (비동기 처리)
+        return c.json(data, 202); // 202 Accepted (비동기 처리)
     } catch (err) {
         console.error("[notification] upstream POST nudge failed:", err);
         return c.json(
@@ -349,7 +380,7 @@ notificationRoutes.post("/:meetingId/attendance-nudges", async (c) => {
                 error: "service_unavailable",
                 message: "서버에 연결할 수 없습니다",
             },
-            502 as any,
+            502,
         );
     }
 });
@@ -372,7 +403,7 @@ notificationRoutes.post("/:meetingId/push-test-send", async (c) => {
                 error: "unauthorized",
                 message: "로그인이 필요합니다",
             },
-            401 as any,
+            401,
         );
     }
 
@@ -394,19 +425,22 @@ notificationRoutes.post("/:meetingId/push-test-send", async (c) => {
 
         if (!upstreamResp.ok) {
             const errorData = await upstreamResp.json();
-            return c.json(errorData, upstreamResp.status as any);
+            return c.json(errorData, asStatusCode(upstreamResp.status));
         }
 
         const data = (await upstreamResp.json()) as SendTestPushResponse;
-        return c.json(data, 200 as any);
+        return c.json(data, 200);
     } catch (err) {
-        console.error("[notification] upstream POST push-test-send failed:", err);
+        console.error(
+            "[notification] upstream POST push-test-send failed:",
+            err,
+        );
         return c.json(
             {
                 error: "service_unavailable",
                 message: "서버에 연결할 수 없습니다",
             },
-            502 as any,
+            502,
         );
     }
 });
