@@ -19,6 +19,10 @@ import {
     formatDateLabel,
     parseSlotKey,
 } from "@/src/pages/meeting/model/time";
+import {
+    buildSlotPresentationGroups,
+    countSlotPresentationItems,
+} from "@/src/pages/meeting/model/slotPresentation";
 import type {
     MeetingDetailResponse,
     MeetingFinalResponse,
@@ -281,6 +285,26 @@ export default function Page() {
             });
         return items;
     }, [summaryMap]);
+
+    const voteSlotPresentation = useMemo(() => {
+        const presentation = new Map<
+            string,
+            {
+                groups: ReturnType<typeof buildSlotPresentationGroups>;
+                rangeCount: number;
+            }
+        >();
+
+        for (const vote of votes) {
+            const groups = buildSlotPresentationGroups(vote.slots ?? []);
+            presentation.set(vote.userId, {
+                groups,
+                rangeCount: countSlotPresentationItems(groups),
+            });
+        }
+
+        return presentation;
+    }, [votes]);
 
     useEffect(() => {
         setMobileDateIndex((prev) => {
@@ -926,32 +950,66 @@ export default function Page() {
                     </p>
                 ) : (
                     <div className="mt-4 space-y-2">
-                        {votes.map((vote) => (
-                            <div
-                                key={vote.userId}
-                                className="rounded-xl border border-border/70 bg-card/80 px-4 py-3"
-                            >
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-sm font-medium text-foreground">
-                                        {vote.userName}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {vote.slots.length} 슬롯 선택 ·{" "}
-                                        {formatUpdatedAtLabel(vote.updatedAt)}
-                                    </span>
-                                </div>
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                    {[...vote.slots].sort().map((slot) => (
-                                        <span
-                                            key={`${vote.userId}-${slot}`}
-                                            className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-foreground"
-                                        >
-                                            {formatVoteSlotLabel(slot)}
+                        {votes.map((vote) => {
+                            const normalized =
+                                voteSlotPresentation.get(vote.userId) ??
+                                (() => {
+                                    const groups = buildSlotPresentationGroups(
+                                        vote.slots ?? [],
+                                    );
+                                    return {
+                                        groups,
+                                        rangeCount:
+                                            countSlotPresentationItems(groups),
+                                    };
+                                })();
+
+                            return (
+                                <div
+                                    key={vote.userId}
+                                    className="rounded-xl border border-border/70 bg-card/80 px-4 py-3"
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="text-sm font-medium text-foreground">
+                                            {vote.userName}
                                         </span>
-                                    ))}
+                                        <span className="text-xs text-muted-foreground">
+                                            {normalized.rangeCount}개 구간 선택 ·{" "}
+                                            {formatUpdatedAtLabel(
+                                                vote.updatedAt,
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 space-y-2">
+                                        {normalized.groups.map((group) => (
+                                            <div
+                                                key={`${vote.userId}-${group.groupKey}`}
+                                                className="rounded-lg border border-border/60 bg-background px-3 py-2"
+                                            >
+                                                <div className="mb-2 flex items-center justify-between gap-2">
+                                                    <p className="text-xs font-medium text-foreground">
+                                                        {group.label}
+                                                    </p>
+                                                    <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted-foreground">
+                                                        {group.items.length}개
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {group.items.map((item) => (
+                                                        <span
+                                                            key={`${vote.userId}-${item.key}`}
+                                                            className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-foreground"
+                                                        >
+                                                            {item.label}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </section>

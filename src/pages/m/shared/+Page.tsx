@@ -1,12 +1,17 @@
 import { ArrowRight, LogIn, NotebookPen, RotateCcw, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePageContext } from "vike-react/usePageContext";
-import { type SlotKey, makeSlotKey } from "@/src/entities/meeting";
+import { type SlotKey } from "@/src/entities/meeting";
 import { apiFetch, savePostLoginRedirect, useAuth } from "@/src/features/auth";
 import { PushNotificationToggle } from "@/src/features/notification";
 import { cn } from "@/src/shared";
 import { TimeGrid } from "@/src/widgets/time-picker";
 import { resolveServerErrorMessage } from "@/src/pages/meeting/new/errors";
+import {
+    buildSlotPresentationGroups,
+    countSlotPresentationItems,
+    truncateSlotPresentationItems,
+} from "@/src/pages/meeting/model/slotPresentation";
 import {
     createTimeSlotsFromRange,
     formatDateLabel,
@@ -203,6 +208,18 @@ export default function Page() {
     );
 
     const canSubmit = selected.size > 0 && !submitting && !isMeetingLocked;
+
+    const selectedPreview = useMemo(() => {
+        const groups = buildSlotPresentationGroups([...selected].sort());
+        const totalRanges = countSlotPresentationItems(groups);
+        const truncated = truncateSlotPresentationItems(groups, 12);
+
+        return {
+            groups: truncated.groups,
+            omittedCount: truncated.omittedCount,
+            totalRanges,
+        };
+    }, [selected]);
 
     const navigateToLoginWithRedirect = useCallback(() => {
         if (!meeting) {
@@ -443,22 +460,41 @@ export default function Page() {
             {user && selected.size > 0 && (
                 <section className="rounded-[1.75rem] border border-border/70 bg-card/80 p-5">
                     <h3 className="text-sm font-semibold text-foreground">선택 미리보기</h3>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        {[...selected]
-                            .sort()
-                            .slice(0, 12)
-                            .map((slot) => {
-                                const date = slot.slice(0, 10);
-                                const time = slot.slice(11);
-                                return (
-                                    <span
-                                        key={makeSlotKey(date, time)}
-                                        className="rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground"
-                                    >
-                                        {formatDateLabel(date)} {time}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {selectedPreview.totalRanges}개 구간 선택
+                    </p>
+                    <div className="mt-3 space-y-2">
+                        {selectedPreview.groups.map((group) => (
+                            <div
+                                key={`preview-${group.groupKey}`}
+                                className="rounded-lg border border-border/60 bg-background px-3 py-2"
+                            >
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                    <p className="text-xs font-medium text-foreground">
+                                        {group.label}
+                                    </p>
+                                    <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted-foreground">
+                                        {group.items.length}개
                                     </span>
-                                );
-                            })}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {group.items.map((item) => (
+                                        <span
+                                            key={`preview-item-${item.key}`}
+                                            className="rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground"
+                                        >
+                                            {item.label}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
+                        {selectedPreview.omittedCount > 0 && (
+                            <span className="inline-flex rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+                                +{selectedPreview.omittedCount}개
+                            </span>
+                        )}
                     </div>
                 </section>
             )}
