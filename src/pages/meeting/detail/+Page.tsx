@@ -83,6 +83,27 @@ function formatUpdatedAtLabel(value: string): string {
     }).format(parsed);
 }
 
+function formatCompactDateLabel(value: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return new Intl.DateTimeFormat("ko-KR", {
+        month: "numeric",
+        day: "numeric",
+    }).format(parsed);
+}
+
+function formatCompactDateWithWeekday(value: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return new Intl.DateTimeFormat("ko-KR", {
+        month: "numeric",
+        day: "numeric",
+        weekday: "short",
+    }).format(parsed);
+}
+
 function toMeetingFinal(
     meeting: MeetingDetailResponse | null,
 ): MeetingFinalResponse | null {
@@ -116,6 +137,7 @@ export default function Page() {
     const [finalized, setFinalized] = useState<MeetingFinalResponse | null>(null);
     const [finalizeBusy, setFinalizeBusy] = useState(false);
     const [finalizeMessage, setFinalizeMessage] = useState<string | null>(null);
+    const [mobileDateIndex, setMobileDateIndex] = useState(0);
 
     useEffect(() => {
         if (authLoading) {
@@ -259,6 +281,29 @@ export default function Page() {
             });
         return items;
     }, [summaryMap]);
+
+    useEffect(() => {
+        setMobileDateIndex((prev) => {
+            if (dates.length === 0) return 0;
+            return Math.min(prev, dates.length - 1);
+        });
+    }, [dates.length]);
+
+    const mobileSelectedDate = dates[mobileDateIndex] ?? dates[0] ?? null;
+
+    const heatmapGridStyle = useMemo(() => {
+        const timeColumnRem = 3.6;
+        const minCellRem = 3.1;
+        const minGridWidthRem = Math.max(
+            20,
+            timeColumnRem + dates.length * minCellRem,
+        );
+
+        return {
+            minWidth: `${minGridWidthRem}rem`,
+            gridTemplateColumns: `${timeColumnRem}rem repeat(${dates.length}, minmax(clamp(${minCellRem}rem, 9vw, 4.5rem), 1fr))`,
+        };
+    }, [dates.length]);
 
     const participantCount = Math.max(
         meeting?.participantCount ?? 0,
@@ -631,7 +676,7 @@ export default function Page() {
             <section className="rounded-[1.75rem] border border-border/70 bg-background p-6 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.42)] sm:p-7">
                 <h2 className="text-lg font-semibold text-foreground">미팅 알림</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                    이 미팅의 일정 변경과 시작 전 안내를 PushNotification으로 받을 수 있습니다.
+                    이 미팅의 일정 변경과 시작 전 안내를 알림으로 받을 수 있습니다.
                 </p>
                 <div className="mt-4">
                     <PushNotificationToggle
@@ -659,52 +704,141 @@ export default function Page() {
                         표시할 시간표 데이터가 없습니다.
                     </p>
                 ) : (
-                    <div className="overflow-auto rounded-2xl border border-border/70 bg-background">
-                        <div
-                            className="grid min-w-[36rem]"
-                            style={{
-                                gridTemplateColumns: `4.2rem repeat(${dates.length}, minmax(4.5rem, 1fr))`,
-                            }}
-                        >
-                            <div className="h-10 border-b border-r border-border/60" />
-                            {dates.map((date) => (
-                                <div
-                                    key={date}
-                                    className="flex h-10 items-center justify-center border-b border-border/60 text-xs font-medium text-muted-foreground"
-                                >
-                                    {formatDateLabel(date)}
-                                </div>
-                            ))}
+                    <>
+                        <div className="sm:hidden">
+                            <p className="mb-2 text-xs text-muted-foreground">
+                                날짜를 선택하면 해당 일자의 시간대만 집중해서 볼 수 있습니다.
+                            </p>
+                            <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+                                {dates.map((date, index) => {
+                                    const selected = index === mobileDateIndex;
+                                    return (
+                                        <button
+                                            key={`mobile-date-${date}`}
+                                            type="button"
+                                            onClick={() =>
+                                                setMobileDateIndex(index)
+                                            }
+                                            className={cn(
+                                                "shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                                                selected
+                                                    ? "border-primary bg-primary/10 text-primary"
+                                                    : "border-border bg-background text-muted-foreground",
+                                            )}
+                                        >
+                                            {formatCompactDateWithWeekday(date)}
+                                        </button>
+                                    );
+                                })}
+                            </div>
 
-                            {timeSlots.map((time) => (
-                                <Fragment key={time}>
-                                    <div className="flex h-8 items-center justify-end border-r border-border/60 pr-2 text-[11px] text-muted-foreground">
-                                        {time}
-                                    </div>
-                                    {dates.map((date) => {
-                                        const slotKey = `${date}-${time}`;
-                                        const count =
-                                            summaryMap.get(slotKey) ?? 0;
-                                        const isFinalSlot =
-                                            finalized?.slot === slotKey;
-                                        return (
-                                            <div
-                                                key={slotKey}
-                                                className={cn(
-                                                    "flex h-8 items-center justify-center border border-border/40 text-[11px]",
-                                                    countClass(count, maxCount),
-                                                    isFinalSlot &&
-                                                        "border-emerald-500 ring-2 ring-emerald-400/70",
+                            {mobileSelectedDate && (
+                                <div className="overflow-hidden rounded-2xl border border-border/70 bg-background">
+                                    <div className="grid grid-cols-[3.6rem_1fr]">
+                                        <div className="h-9 border-b border-r border-border/60 bg-accent/60" />
+                                        <div className="flex h-9 items-center justify-between border-b border-border/60 px-3 text-xs font-medium text-foreground">
+                                            <span>
+                                                {formatDateLabel(
+                                                    mobileSelectedDate,
                                                 )}
-                                            >
-                                                {count > 0 ? count : ""}
-                                            </div>
-                                        );
-                                    })}
-                                </Fragment>
-                            ))}
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                                참여 인원
+                                            </span>
+                                        </div>
+
+                                        {timeSlots.map((time) => {
+                                            const slotKey =
+                                                `${mobileSelectedDate}-${time}`;
+                                            const count =
+                                                summaryMap.get(slotKey) ?? 0;
+                                            const isFinalSlot =
+                                                finalized?.slot === slotKey;
+
+                                            return (
+                                                <Fragment
+                                                    key={`mobile-${slotKey}`}
+                                                >
+                                                    <div className="flex h-9 items-center justify-end border-b border-r border-border/60 pr-2 text-[11px] text-muted-foreground">
+                                                        {time}
+                                                    </div>
+                                                    <div
+                                                        className={cn(
+                                                            "flex h-9 items-center justify-between border-b border-border/40 px-3 text-xs",
+                                                            countClass(
+                                                                count,
+                                                                maxCount,
+                                                            ),
+                                                            isFinalSlot &&
+                                                                "border-emerald-500 ring-1 ring-emerald-400/80",
+                                                        )}
+                                                    >
+                                                        <span className="text-muted-foreground">
+                                                            {count > 0
+                                                                ? "가능"
+                                                                : "-"}
+                                                        </span>
+                                                        <span className="text-sm font-semibold">
+                                                            {count > 0
+                                                                ? `${count}명`
+                                                                : ""}
+                                                        </span>
+                                                    </div>
+                                                </Fragment>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
+
+                        <div className="hidden overflow-auto rounded-2xl border border-border/70 bg-background sm:block">
+                            <div className="grid" style={heatmapGridStyle}>
+                                <div className="sticky left-0 top-0 z-30 h-10 border-b border-r border-border/60 bg-background" />
+                                {dates.map((date) => (
+                                    <div
+                                        key={date}
+                                        className="sticky top-0 z-20 flex h-10 items-center justify-center border-b border-border/60 bg-background px-1 text-center text-xs font-medium text-muted-foreground"
+                                        title={formatDateLabel(date)}
+                                    >
+                                        {formatCompactDateLabel(date)}
+                                    </div>
+                                ))}
+
+                                {timeSlots.map((time) => (
+                                    <Fragment key={time}>
+                                        <div className="sticky left-0 z-10 flex h-8 items-center justify-end border-r border-border/60 bg-background pr-2 text-[11px] text-muted-foreground">
+                                            {time}
+                                        </div>
+                                        {dates.map((date) => {
+                                            const slotKey = `${date}-${time}`;
+                                            const count =
+                                                summaryMap.get(slotKey) ?? 0;
+                                            const isFinalSlot =
+                                                finalized?.slot === slotKey;
+                                            return (
+                                                <div
+                                                    key={slotKey}
+                                                    className={cn(
+                                                        "flex h-8 items-center justify-center border border-border/40 px-1 text-[11px]",
+                                                        countClass(
+                                                            count,
+                                                            maxCount,
+                                                        ),
+                                                        isFinalSlot &&
+                                                            "border-emerald-500 ring-2 ring-emerald-400/70",
+                                                    )}
+                                                    title={`${formatDateLabel(date)} ${time} · ${count}명`}
+                                                >
+                                                    {count > 0 ? count : ""}
+                                                </div>
+                                            );
+                                        })}
+                                    </Fragment>
+                                ))}
+                        </div>
+                        </div>
+                    </>
                 )}
 
                 {topSlots.length > 0 && (

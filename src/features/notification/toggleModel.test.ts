@@ -29,7 +29,7 @@ describe("getToggleNotice", () => {
                 permissionStatus: "granted",
                 isSubscribed: false,
             }),
-        ).toContain("PWA");
+        ).toContain("홈 화면");
     });
 
     it("shows permission notice when notification permission is blocked", () => {

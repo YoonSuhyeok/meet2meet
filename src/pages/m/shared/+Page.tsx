@@ -429,7 +429,7 @@ export default function Page() {
             <section className="rounded-[1.75rem] border border-border/70 bg-background p-6 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.42)] sm:p-7">
                 <h2 className="text-lg font-semibold text-foreground">미팅 알림</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                    이 미팅의 일정 변경과 시작 전 안내를 PushNotification으로 받을 수 있습니다.
+                    이 미팅의 일정 변경과 시작 전 안내를 알림으로 받을 수 있습니다.
                 </p>
                 <div className="mt-4">
                     <PushNotificationToggle

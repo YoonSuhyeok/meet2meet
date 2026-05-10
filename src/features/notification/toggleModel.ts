@@ -17,7 +17,7 @@ export function getToggleNotice(input: ToggleNoticeInput): string | null {
         return "로그인하면 이 미팅의 일정 변경, 미팅 시작 알림을 받을 수 있습니다.";
     }
     if (!input.isStandalone) {
-        return "PWA를 홈 화면에 추가하면 알림을 받을 수 있습니다.";
+        return "알림을 받으려면 먼저 홈 화면에 추가한 앱으로 열어주세요. 설치 후 이 버튼을 다시 누르면 구독이 완료됩니다.";
     }
     if (input.permissionStatus !== "granted") {
         return "설정에서 알림을 허용하면 실시간 알림을 받을 수 있습니다.";
