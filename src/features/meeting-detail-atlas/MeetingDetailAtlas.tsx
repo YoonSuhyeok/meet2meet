@@ -17,11 +17,25 @@ type Tone = "neutral" | "success" | "warning" | "danger";
 type PreviewMode = "loading" | "error" | "interactive";
 type ActionTone = "primary" | "secondary" | "warning";
 type ActionState = "enabled" | "disabled";
+type VoteState = "open" | "locked";
+type DecisionState = "none" | "tentative" | "final";
+type HostSelectionState = "idle" | "dragging" | "selected";
 
 export interface MeetingDetailAtlasAction {
     label: string;
     tone: ActionTone;
     state: ActionState;
+}
+
+export interface MeetingDetailAtlasNotice {
+    title: string;
+    body: string;
+    tone: Tone;
+}
+
+export interface MeetingDetailAtlasRecommendation {
+    label: string;
+    isSelected?: boolean;
 }
 
 export interface MeetingDetailAtlasProps {
@@ -39,12 +53,20 @@ export interface MeetingDetailAtlasProps {
     notes: string[];
     actions: MeetingDetailAtlasAction[];
     stats?: Array<{ label: string; value: string }>;
+    voteState?: VoteState;
+    decisionState?: DecisionState;
     showLoginCta?: boolean;
     showHostControls?: boolean;
     showNotificationCard?: boolean;
     showSelectionSummary?: boolean;
-    lockedMessage?: string;
-    finalSlotLabel?: string;
+    decisionBlockLabels?: string[];
+    dragPreviewBlockLabels?: string[];
+    decisionNotice?: MeetingDetailAtlasNotice;
+    secondaryNotice?: MeetingDetailAtlasNotice;
+    recommendedSlots?: MeetingDetailAtlasRecommendation[];
+    hostSelectionState?: HostSelectionState;
+    hostDecisionHelpText?: string;
+    notificationLabel?: string;
     errorMessage?: string;
 }
 
@@ -59,6 +81,13 @@ const actionClassName: Record<ActionTone, string> = {
     primary: "bg-primary text-primary-foreground",
     secondary: "border border-border bg-background text-foreground",
     warning: "bg-amber-500 text-white",
+};
+
+const noticeClassName: Record<Tone, string> = {
+    neutral: "border-slate-200 bg-slate-50 text-slate-700",
+    success: "border-emerald-300 bg-emerald-50 text-emerald-800",
+    warning: "border-amber-300 bg-amber-50 text-amber-800",
+    danger: "border-destructive/30 bg-destructive/5 text-destructive",
 };
 
 const miniDates = ["05/10", "05/11", "05/12"];
@@ -92,12 +121,37 @@ function ActionPreviewButton({ action }: { action: MeetingDetailAtlasAction }) {
     );
 }
 
+function NoticeCard({
+    notice,
+    detailLabel,
+}: {
+    notice: MeetingDetailAtlasNotice;
+    detailLabel?: string;
+}) {
+    return (
+        <div
+            className={cn(
+                "rounded-xl border px-4 py-3 text-sm",
+                noticeClassName[notice.tone],
+            )}
+        >
+            <p className="font-semibold">{notice.title}</p>
+            <p className="mt-1">{notice.body}</p>
+            {detailLabel && (
+                <div className="mt-1 font-medium">{detailLabel}</div>
+            )}
+        </div>
+    );
+}
+
 function MiniHeatmap({
     locked,
-    finalSlotLabel,
+    decisionBlockLabels = [],
+    dragPreviewBlockLabels = [],
 }: {
     locked: boolean;
-    finalSlotLabel?: string;
+    decisionBlockLabels?: string[];
+    dragPreviewBlockLabels?: string[];
 }) {
     return (
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-background">
@@ -124,8 +178,11 @@ function MiniHeatmap({
                         </div>
                         {miniDates.map((date, dateIndex) => {
                             const count = counts[timeIndex]?.[dateIndex] ?? 0;
-                            const isFinalSlot =
-                                finalSlotLabel === `${date} ${time}`;
+                            const slotLabel = `${date} ${time}`;
+                            const isDecisionBlock =
+                                decisionBlockLabels.includes(slotLabel);
+                            const isPreviewBlock =
+                                dragPreviewBlockLabels.includes(slotLabel);
                             return (
                                 <div
                                     key={`${date}-${time}`}
@@ -139,7 +196,9 @@ function MiniHeatmap({
                                         count >= 3 &&
                                             "bg-emerald-100 text-emerald-800",
                                         locked && "opacity-80",
-                                        isFinalSlot &&
+                                        isPreviewBlock &&
+                                            "ring-2 ring-sky-500 ring-inset border border-dashed border-sky-400",
+                                        isDecisionBlock &&
                                             "ring-2 ring-emerald-500 ring-inset",
                                     )}
                                 >
@@ -158,26 +217,57 @@ export function MeetingDetailAtlas({
     actions,
     actor,
     branchId,
+    decisionNotice,
+    decisionState = "none",
+    decisionBlockLabels = [],
+    dragPreviewBlockLabels = [],
     errorMessage,
-    finalSlotLabel,
     goal,
     hiddenElements,
-    lockedMessage,
+    hostDecisionHelpText,
+    hostSelectionState = "idle",
     notes,
+    notificationLabel,
     previewMode,
+    recommendedSlots = [],
     route,
     showHostControls = false,
     showLoginCta = false,
     showNotificationCard = true,
     showSelectionSummary = false,
+    secondaryNotice,
     stats = [],
     statusLabel,
     statusTone,
     summary,
     title,
     visibleElements,
+    voteState = "open",
 }: MeetingDetailAtlasProps) {
-    const isLocked = Boolean(lockedMessage);
+    const isLocked = voteState === "locked";
+    const decisionCount = decisionBlockLabels.length;
+    const decisionLabel =
+        decisionCount > 0 && decisionState !== "none"
+            ? `${decisionState === "tentative" ? "잠정 확정안 블록" : "확정 블록"} ${decisionCount}개: ${decisionBlockLabels.join(", ")}`
+            : undefined;
+    const resolvedNotificationLabel =
+        notificationLabel ??
+        (showLoginCta
+            ? "로그인 후 알림 설정 가능"
+            : isLocked
+              ? "잠금 이후 일정 알림 제공"
+              : decisionState === "tentative"
+                ? "잠정 확정안 변경은 조용히 반영"
+                : "알림 받기 토글");
+    const resolvedHostDecisionHelpText =
+        hostDecisionHelpText ??
+        (isLocked
+            ? "잠금 해제 시에도 확정안 블록은 유지되고, 투표만 다시 열립니다."
+            : hostSelectionState === "dragging"
+              ? "이미 집계된 드래그판 위에서 Host가 직접 블록을 드래그해 고르고 있습니다."
+              : decisionState === "tentative"
+                ? "Host가 드래그로 고른 잠정 확정안 블록이 보이지만, Participant 투표는 계속 열려 있습니다."
+                : "Host는 집계된 드래그판 위에서 직접 블록을 드래그 선택하고, 잠금은 별도 액션으로 진행합니다.");
 
     return (
         <div className="min-h-screen bg-muted/30 px-4 py-8 sm:px-6">
@@ -255,6 +345,15 @@ export function MeetingDetailAtlas({
                                                         ? "투표 잠김"
                                                         : "투표 진행 중"}
                                                 </span>
+                                                {decisionState !== "none" &&
+                                                    decisionCount > 0 && (
+                                                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+                                                            {decisionState ===
+                                                            "tentative"
+                                                                ? "잠정 확정안 블록 있음"
+                                                                : "확정 블록 있음"}
+                                                        </span>
+                                                    )}
                                                 <span className="rounded-full bg-accent px-3 py-1 text-xs text-muted-foreground">
                                                     미응답 3명
                                                 </span>
@@ -350,11 +449,7 @@ export function MeetingDetailAtlas({
                                         </p>
                                         <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-2 text-sm text-foreground">
                                             <BellRing className="h-4 w-4" />
-                                            {showLoginCta
-                                                ? "로그인 후 알림 설정 가능"
-                                                : isLocked
-                                                  ? "확정 이후 알림만 제공"
-                                                  : "알림 받기 토글"}
+                                            {resolvedNotificationLabel}
                                         </div>
                                     </section>
                                 )}
@@ -372,25 +467,33 @@ export function MeetingDetailAtlas({
                                         </span>
                                     </div>
 
-                                    {lockedMessage && (
-                                        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                                            {lockedMessage}
-                                            {finalSlotLabel && (
-                                                <div className="mt-1 font-medium">
-                                                    확정 슬롯: {finalSlotLabel}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    <div className="space-y-3">
+                                        {decisionNotice && (
+                                            <NoticeCard
+                                                notice={decisionNotice}
+                                                detailLabel={decisionLabel}
+                                            />
+                                        )}
+                                        {secondaryNotice && (
+                                            <NoticeCard
+                                                notice={secondaryNotice}
+                                            />
+                                        )}
+                                    </div>
 
                                     <MiniHeatmap
                                         locked={isLocked}
-                                        finalSlotLabel={finalSlotLabel}
+                                        decisionBlockLabels={
+                                            decisionBlockLabels
+                                        }
+                                        dragPreviewBlockLabels={
+                                            dragPreviewBlockLabels
+                                        }
                                     />
 
                                     <p className="mt-3 text-xs text-muted-foreground">
                                         {showHostControls
-                                            ? "Host는 집계 중심으로 본다."
+                                            ? "Host는 집계된 드래그판 위에서 직접 블록을 고른다."
                                             : "Participant는 드래그로 빠르게 다중 선택할 수 있다."}
                                     </p>
 
@@ -409,6 +512,65 @@ export function MeetingDetailAtlas({
                                             />
                                         ))}
                                     </div>
+
+                                    {showHostControls &&
+                                        recommendedSlots.length > 0 && (
+                                            <div className="mt-5 rounded-xl border border-border/70 bg-card/80 px-4 py-4">
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    호스트 드래그 확정
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    {
+                                                        resolvedHostDecisionHelpText
+                                                    }
+                                                </p>
+                                                {hostSelectionState !==
+                                                    "idle" && (
+                                                    <div className="mt-2">
+                                                        <span
+                                                            className={cn(
+                                                                "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                                                                hostSelectionState ===
+                                                                    "dragging"
+                                                                    ? "bg-sky-100 text-sky-700"
+                                                                    : "bg-emerald-100 text-emerald-700",
+                                                            )}
+                                                        >
+                                                            {hostSelectionState ===
+                                                            "dragging"
+                                                                ? "드래그 프리뷰"
+                                                                : "드래그 선택 저장됨"}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {recommendedSlots.map(
+                                                        (slot) => (
+                                                            <span
+                                                                key={slot.label}
+                                                                className={cn(
+                                                                    "rounded-full border px-3 py-1.5 text-xs font-medium",
+                                                                    slot.isSelected
+                                                                        ? "border-emerald-400 bg-emerald-50 text-emerald-800"
+                                                                        : hostSelectionState ===
+                                                                            "dragging"
+                                                                          ? "border-sky-400 bg-sky-50 text-sky-800"
+                                                                          : "border-border bg-background text-foreground",
+                                                                )}
+                                                            >
+                                                                {slot.label}
+                                                                {hostSelectionState ===
+                                                                    "dragging" &&
+                                                                    !slot.isSelected &&
+                                                                    " · 프리뷰"}
+                                                                {slot.isSelected &&
+                                                                    " · 선택됨"}
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                 </section>
                             </div>
                         )}
