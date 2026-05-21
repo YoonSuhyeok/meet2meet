@@ -285,7 +285,7 @@ export default function Page() {
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Recap Publisher
                 </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground break-words [overflow-wrap:anywhere] sm:text-3xl">
                     {meeting.title} 회고 작성
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">
